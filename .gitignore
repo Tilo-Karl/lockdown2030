@@ -1,0 +1,28 @@
+# Xcode
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift PM
+.swiftpm/
+.build/
+
+# CocoaPods (if you ever add it)
+Pods/
+Podfile.lock
+
+# Carthage (if you ever use it)
+Carthage/Build/
+
+# Fastlane (if ever)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# User crap
+*.DS_Store
+*.swp

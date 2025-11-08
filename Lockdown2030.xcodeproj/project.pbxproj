@@ -1,0 +1,607 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D791106B2EBF7E3C0024B7FC /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = D791106A2EBF7E3C0024B7FC /* FirebaseAuth */; };
+		D791106D2EBF7E3C0024B7FC /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = D791106C2EBF7E3C0024B7FC /* FirebaseCore */; };
+		D791106F2EBF7E3C0024B7FC /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = D791106E2EBF7E3C0024B7FC /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D791104D2EBF76F70024B7FC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D79110372EBF76F50024B7FC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D791103E2EBF76F50024B7FC;
+			remoteInfo = Lockdown2030;
+		};
+		D79110572EBF76F70024B7FC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D79110372EBF76F50024B7FC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D791103E2EBF76F50024B7FC;
+			remoteInfo = Lockdown2030;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D791103F2EBF76F50024B7FC /* Lockdown2030.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lockdown2030.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D791104C2EBF76F70024B7FC /* Lockdown2030Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Lockdown2030Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D79110562EBF76F70024B7FC /* Lockdown2030UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Lockdown2030UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D79110412EBF76F50024B7FC /* Lockdown2030 */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Lockdown2030;
+			sourceTree = "<group>";
+		};
+		D791104F2EBF76F70024B7FC /* Lockdown2030Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Lockdown2030Tests;
+			sourceTree = "<group>";
+		};
+		D79110592EBF76F70024B7FC /* Lockdown2030UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Lockdown2030UITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D791103C2EBF76F50024B7FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D791106D2EBF7E3C0024B7FC /* FirebaseCore in Frameworks */,
+				D791106B2EBF7E3C0024B7FC /* FirebaseAuth in Frameworks */,
+				D791106F2EBF7E3C0024B7FC /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79110492EBF76F70024B7FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79110532EBF76F70024B7FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D79110362EBF76F50024B7FC = {
+			isa = PBXGroup;
+			children = (
+				D79110412EBF76F50024B7FC /* Lockdown2030 */,
+				D791104F2EBF76F70024B7FC /* Lockdown2030Tests */,
+				D79110592EBF76F70024B7FC /* Lockdown2030UITests */,
+				D79110402EBF76F50024B7FC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D79110402EBF76F50024B7FC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D791103F2EBF76F50024B7FC /* Lockdown2030.app */,
+				D791104C2EBF76F70024B7FC /* Lockdown2030Tests.xctest */,
+				D79110562EBF76F70024B7FC /* Lockdown2030UITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D791103E2EBF76F50024B7FC /* Lockdown2030 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D79110602EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030" */;
+			buildPhases = (
+				D791103B2EBF76F50024B7FC /* Sources */,
+				D791103C2EBF76F50024B7FC /* Frameworks */,
+				D791103D2EBF76F50024B7FC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D79110412EBF76F50024B7FC /* Lockdown2030 */,
+			);
+			name = Lockdown2030;
+			packageProductDependencies = (
+				D791106A2EBF7E3C0024B7FC /* FirebaseAuth */,
+				D791106C2EBF7E3C0024B7FC /* FirebaseCore */,
+				D791106E2EBF7E3C0024B7FC /* FirebaseFirestore */,
+			);
+			productName = Lockdown2030;
+			productReference = D791103F2EBF76F50024B7FC /* Lockdown2030.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D791104B2EBF76F70024B7FC /* Lockdown2030Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D79110632EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030Tests" */;
+			buildPhases = (
+				D79110482EBF76F70024B7FC /* Sources */,
+				D79110492EBF76F70024B7FC /* Frameworks */,
+				D791104A2EBF76F70024B7FC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D791104E2EBF76F70024B7FC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D791104F2EBF76F70024B7FC /* Lockdown2030Tests */,
+			);
+			name = Lockdown2030Tests;
+			packageProductDependencies = (
+			);
+			productName = Lockdown2030Tests;
+			productReference = D791104C2EBF76F70024B7FC /* Lockdown2030Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D79110552EBF76F70024B7FC /* Lockdown2030UITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D79110662EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030UITests" */;
+			buildPhases = (
+				D79110522EBF76F70024B7FC /* Sources */,
+				D79110532EBF76F70024B7FC /* Frameworks */,
+				D79110542EBF76F70024B7FC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D79110582EBF76F70024B7FC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D79110592EBF76F70024B7FC /* Lockdown2030UITests */,
+			);
+			name = Lockdown2030UITests;
+			packageProductDependencies = (
+			);
+			productName = Lockdown2030UITests;
+			productReference = D79110562EBF76F70024B7FC /* Lockdown2030UITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D79110372EBF76F50024B7FC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					D791103E2EBF76F50024B7FC = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					D791104B2EBF76F70024B7FC = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = D791103E2EBF76F50024B7FC;
+					};
+					D79110552EBF76F70024B7FC = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = D791103E2EBF76F50024B7FC;
+					};
+				};
+			};
+			buildConfigurationList = D791103A2EBF76F50024B7FC /* Build configuration list for PBXProject "Lockdown2030" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D79110362EBF76F50024B7FC;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D79110692EBF7E3C0024B7FC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D79110402EBF76F50024B7FC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D791103E2EBF76F50024B7FC /* Lockdown2030 */,
+				D791104B2EBF76F70024B7FC /* Lockdown2030Tests */,
+				D79110552EBF76F70024B7FC /* Lockdown2030UITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D791103D2EBF76F50024B7FC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D791104A2EBF76F70024B7FC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79110542EBF76F70024B7FC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D791103B2EBF76F50024B7FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79110482EBF76F70024B7FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D79110522EBF76F70024B7FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D791104E2EBF76F70024B7FC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D791103E2EBF76F50024B7FC /* Lockdown2030 */;
+			targetProxy = D791104D2EBF76F70024B7FC /* PBXContainerItemProxy */;
+		};
+		D79110582EBF76F70024B7FC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D791103E2EBF76F50024B7FC /* Lockdown2030 */;
+			targetProxy = D79110572EBF76F70024B7FC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D791105E2EBF76F70024B7FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D791105F2EBF76F70024B7FC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D79110612EBF76F70024B7FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D79110622EBF76F70024B7FC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D79110642EBF76F70024B7FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lockdown2030.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lockdown2030";
+			};
+			name = Debug;
+		};
+		D79110652EBF76F70024B7FC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lockdown2030.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lockdown2030";
+			};
+			name = Release;
+		};
+		D79110672EBF76F70024B7FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Lockdown2030;
+			};
+			name = Debug;
+		};
+		D79110682EBF76F70024B7FC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8JN55CP2C9;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tilodelau.Lockdown2030UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Lockdown2030;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D791103A2EBF76F50024B7FC /* Build configuration list for PBXProject "Lockdown2030" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D791105E2EBF76F70024B7FC /* Debug */,
+				D791105F2EBF76F70024B7FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D79110602EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D79110612EBF76F70024B7FC /* Debug */,
+				D79110622EBF76F70024B7FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D79110632EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D79110642EBF76F70024B7FC /* Debug */,
+				D79110652EBF76F70024B7FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D79110662EBF76F70024B7FC /* Build configuration list for PBXNativeTarget "Lockdown2030UITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D79110672EBF76F70024B7FC /* Debug */,
+				D79110682EBF76F70024B7FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D79110692EBF7E3C0024B7FC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D791106A2EBF7E3C0024B7FC /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D79110692EBF7E3C0024B7FC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		D791106C2EBF7E3C0024B7FC /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D79110692EBF7E3C0024B7FC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		D791106E2EBF7E3C0024B7FC /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D79110692EBF7E3C0024B7FC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D79110372EBF76F50024B7FC /* Project object */;
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDQ5Ye_dAIQ33xXfj2xaGSPi2Hl9_4d84Q</string>
+	<key>GCM_SENDER_ID</key>
+	<string>52812703983</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.tilodelau.lockdown2030</string>
+	<key>PROJECT_ID</key>
+	<string>lockdown2030mvp-1744b</string>
+	<key>STORAGE_BUCKET</key>
+	<string>lockdown2030mvp-1744b.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:52812703983:ios:5d29d491921689e3ced31a</string>
+</dict>
+</plist>
