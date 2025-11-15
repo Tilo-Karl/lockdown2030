@@ -12,13 +12,36 @@ import FirebaseAuth
 import FirebaseFirestore
 import os.log
 
+
 final class GameVM: ObservableObject {
+    
+    func handleTileTap(pos: Pos) {
+        // Translate tap on an absolute tile into a relative move request.
+        print("Tapped tile:", pos.x, pos.y)
+        
+        // We can only compute a delta if we know our current position.
+        guard let current = myPos else {
+            return
+        }
+        
+        let dx = pos.x - current.x
+        let dy = pos.y - current.y
+        
+        // If there's no movement, do nothing.
+        guard dx != 0 || dy != 0 else { return }
+        
+        Task {
+            await self.move(dx: dx, dy: dy)
+        }
+    }
+    
   @Published var uid: String = ""
   @Published var gameName: String = ""
   @Published var gridW = 0
   @Published var gridH = 0
   @Published var status: String = ""
   @Published var myPos: Pos? = nil
+  @Published var focusPos: Pos? = nil
   private var myPlayerListener: ListenerRegistration?
 
   private let db = Firestore.firestore()
@@ -47,7 +70,9 @@ final class GameVM: ObservableObject {
     do {
       let res: EngineJoinRes = try await CloudAPI.postJSON(to: CloudAPI.join, body: req)
       if res.ok {
-        self.myPos = Pos(x: res.x, y: res.y)
+        let pos = Pos(x: res.x, y: res.y)
+        self.myPos = pos
+        self.focusPos = pos
         self.startMyPlayerListener()
         print("Joined:", ["ok": 1, "x": res.x, "y": res.y])
       } else {
@@ -64,9 +89,16 @@ final class GameVM: ObservableObject {
     let req = EngineMoveReq(gameId: gameId, uid: uid, dx: dx, dy: dy)
     do {
       let res: EngineMoveRes = try await CloudAPI.postJSON(to: CloudAPI.move, body: req)
-      if res.ok, let x = res.x, let y = res.y {
-        self.myPos = Pos(x: x, y: y)
-        print("Move:", ["ok": 1, "x": x, "y": y])
+      if res.ok {
+        if let x = res.x, let y = res.y {
+          let pos = Pos(x: x, y: y)
+          self.myPos = pos
+          self.focusPos = pos
+          print("Move:", ["ok": 1, "x": x, "y": y])
+        } else {
+          // Backend reported ok but didn't send coordinates; Firestore listener will update myPos.
+          print("Move ok (no coordinates in response)")
+        }
       } else {
         print("Move failed:", res.reason ?? "unknown")
       }
@@ -125,30 +157,37 @@ final class GameVM: ObservableObject {
       }
   }
 
-  private func startMyPlayerListener() {
-    // Tear down any previous listener
-    myPlayerListener?.remove()
-    myPlayerListener = nil
+    private func startMyPlayerListener() {
+      // Tear down any previous listener
+      myPlayerListener?.remove()
+      myPlayerListener = nil
 
-    // If we don't have a uid yet, clear position and bail
-    guard !uid.isEmpty else { myPos = nil; return }
+      // If we don't have a uid yet, clear position and bail
+      guard !uid.isEmpty else { myPos = nil; focusPos = nil; return }
 
-    let ref = db.collection("games").document(gameId)
-      .collection("players").document(uid)
+      let ref = db.collection("games").document(gameId)
+        .collection("players").document(uid)
 
-    myPlayerListener = ref.addSnapshotListener { [weak self] snap, _ in
-      guard let self else { return }
-      guard let data = snap?.data(),
-            let pos = data["pos"] as? [String: Any],
-            let x = pos["x"] as? Int,
-            let y = pos["y"] as? Int else {
-        // If the doc disappeared or is missing pos, clear it
-        self.myPos = nil
-        return
+      myPlayerListener = ref.addSnapshotListener { [weak self] snap, _ in
+        guard let self else { return }
+        guard let data = snap?.data(),
+              let pos = data["pos"] as? [String: Any],
+              let x = pos["x"] as? Int,
+              let y = pos["y"] as? Int else {
+          // If the doc disappeared or is missing pos, clear it
+          self.myPos = nil
+          self.focusPos = nil
+          return
+        }
+
+        let newPos = Pos(x: x, y: y)
+        // Only update if it changed, to avoid pointless scroll spam
+        if self.myPos != newPos {
+          self.myPos = newPos
+          self.focusPos = newPos
+        }
       }
-      self.myPos = Pos(x: x, y: y)
     }
-  }
 
   func upsertMyPlayer() {
     guard !uid.isEmpty else { return }
@@ -164,4 +203,5 @@ final class GameVM: ObservableObject {
       "alive": true
     ], merge: true)
   }
+    
 }
