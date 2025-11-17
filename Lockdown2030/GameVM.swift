@@ -42,6 +42,19 @@ final class GameVM: ObservableObject {
   @Published var status: String = ""
   @Published var myPos: Pos? = nil
   @Published var focusPos: Pos? = nil
+  @Published var maxViewRadius: Int = 1   // 0 = only your tile, 1 = adjacent tiles, etc.
+
+  struct Building: Identifiable, Codable, Equatable {
+      let id: String
+      let type: String
+      let root: Pos
+      let tiles: Int
+      let floors: Int
+  }
+
+  @Published var buildings: [Building] = []
+  @Published var mapId: String = ""
+    
   private var myPlayerListener: ListenerRegistration?
 
   private let db = Firestore.firestore()
@@ -154,6 +167,22 @@ final class GameVM: ObservableObject {
           self.gridW = gs["w"] as? Int ?? 0
           self.gridH = gs["h"] as? Int ?? 0
         }
+
+        // Map id
+        if let mid = data["mapId"] as? String {
+            self.mapId = mid
+        }
+
+        // Prefer buildings from game.mapMeta (written by backend),
+        // fall back to loading from the maps collection if missing.
+        if let mapMeta = data["mapMeta"] as? [String: Any],
+           let arr = mapMeta["buildings"] as? [[String: Any]] {
+            self.buildings = self.parseBuildingsArray(arr)
+        } else if !self.mapId.isEmpty {
+            Task { await self.loadMapBuildings(mapId: self.mapId) }
+        } else {
+            self.buildings = []
+        }
       }
   }
 
@@ -203,5 +232,73 @@ final class GameVM: ObservableObject {
       "alive": true
     ], merge: true)
   }
-    
+
+    @MainActor
+    func adminUploadGameConfig() async {
+        // One-shot admin helper: load a JSON file from the bundle and overwrite the game config doc.
+        guard let url = Bundle.main.url(forResource: "lockdown2030-gameConfig", withExtension: "json") else {
+            log.error("Admin config upload failed: missing lockdown2030-gameConfig.json in bundle")
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+                log.error("Admin config upload failed: JSON is not a [String: Any] dictionary")
+                return
+            }
+            
+            try await db.collection("games")
+                .document(gameId)
+                .setData(json, merge: false)
+            
+            log.info("Admin config uploaded successfully ✅")
+        } catch {
+            log.error("Admin config upload error: \(String(describing: error))")
+        }
+    }
+    private func parseBuildingsArray(_ arr: [[String: Any]]) -> [Building] {
+        var result: [Building] = []
+        for b in arr {
+            guard let id = b["id"] as? String,
+                  let type = b["type"] as? String,
+                  let rootDict = b["root"] as? [String: Any],
+                  let rx = rootDict["x"] as? Int,
+                  let ry = rootDict["y"] as? Int,
+                  let tiles = b["tiles"] as? Int,
+                  let floors = b["floors"] as? Int else { continue }
+
+            result.append(
+                Building(
+                    id: id,
+                    type: type,
+                    root: Pos(x: rx, y: ry),
+                    tiles: tiles,
+                    floors: floors
+                )
+            )
+        }
+        return result
+    }
+
+    @MainActor
+    private func loadMapBuildings(mapId: String) async {
+        guard !mapId.isEmpty else {
+            self.buildings = []
+            return
+        }
+        do {
+            let snap = try await db.collection("maps").document(mapId).getDocument()
+            guard let data = snap.data(),
+                  let meta = data["meta"] as? [String: Any],
+                  let arr = meta["buildings"] as? [[String: Any]] else {
+                self.buildings = []
+                return
+            }
+
+            self.buildings = self.parseBuildingsArray(arr)
+        } catch {
+            self.buildings = []
+        }
+    }
 }

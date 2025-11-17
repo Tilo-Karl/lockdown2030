@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var vm = GameVM()
     @State private var targetUid: String = ""
+    @State private var viewRadius: Int = 1
 
     var body: some View {
         VStack(spacing: 16) {
@@ -21,7 +22,7 @@ struct ContentView: View {
 
             // Map
             if !vm.uid.isEmpty && vm.gridW > 0 && vm.gridH > 0 {
-                GridView(vm: vm)
+                GridView(vm: vm, viewRadius: viewRadius)
                     .padding(.top, 4)
                     .frame(minHeight: 220)
             } else {
@@ -31,16 +32,28 @@ struct ContentView: View {
                     .padding(.vertical, 40)
             }
 
+            // View radius controls
+            viewRadiusSection
+
             // Primary actions
             primaryActionsSection
 
             // Attack row
             attackSection
 
+            #if DEBUG
+            adminSection
+            #endif
+
             Spacer(minLength: 0)
         }
         .padding(.vertical, 16)
         .padding(.horizontal)
+        .onChange(of: vm.maxViewRadius) { newValue in
+            if viewRadius > newValue {
+                viewRadius = newValue
+            }
+        }
     }
 
     // MARK: - Subviews
@@ -50,7 +63,7 @@ struct ContentView: View {
             Text(vm.gameName.isEmpty ? "Lockdown 2030" : vm.gameName)
                 .font(.title2).bold()
 
-            Text("Status: \(vm.status) • \(vm.gridW)x\(vm.gridH)")
+            Text("Status: \(vm.status) • \(vm.gridW)x\(vm.gridH) • R\(vm.maxViewRadius)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -65,6 +78,32 @@ struct ContentView: View {
                     .font(.caption2)
                     .foregroundStyle(.blue)
             }
+        }
+    }
+
+    private var viewRadiusSection: some View {
+        HStack(spacing: 8) {
+            Text("View radius: \(viewRadius)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            // "-" = zoom out (show more tiles)
+            Button("-") {
+                if viewRadius < vm.maxViewRadius {
+                    viewRadius += 1
+                }
+            }
+            .buttonStyle(.bordered)
+
+            // "+" = zoom in (show fewer tiles)
+            Button("+") {
+                if viewRadius > 0 {
+                    viewRadius -= 1
+                }
+            }
+            .buttonStyle(.bordered)
         }
     }
 
@@ -95,7 +134,20 @@ struct ContentView: View {
             .buttonStyle(.bordered)
         }
     }
+
+    #if DEBUG
+    private var adminSection: some View {
+        HStack(spacing: 12) {
+            Button("Upload game config") {
+                Task {
+                    await vm.adminUploadGameConfig()
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(.orange)
+        }
+    }
+    #endif
 }
 
 #Preview { ContentView() }
-
