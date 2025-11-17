@@ -21,16 +21,7 @@ struct ContentView: View {
                 .padding(.vertical, 4)
 
             // Map
-            if !vm.uid.isEmpty && vm.gridW > 0 && vm.gridH > 0 {
-                GridView(vm: vm, viewRadius: viewRadius)
-                    .padding(.top, 4)
-                    .frame(minHeight: 220)
-            } else {
-                Text("Join a game to see the map.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 40)
-            }
+            mapSection
 
             // View radius controls
             viewRadiusSection
@@ -41,9 +32,6 @@ struct ContentView: View {
             // Attack row
             attackSection
 
-            #if DEBUG
-            adminSection
-            #endif
 
             Spacer(minLength: 0)
         }
@@ -57,6 +45,21 @@ struct ContentView: View {
     }
 
     // MARK: - Subviews
+
+    private var mapSection: some View {
+        Group {
+            if !vm.uid.isEmpty && vm.gridW > 0 && vm.gridH > 0 {
+                GridView(vm: vm, viewRadius: viewRadius)
+                    .padding(.top, 4)
+                    .frame(minHeight: 220)
+            } else {
+                Text("Join a game to see the map.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 40)
+            }
+        }
+    }
 
     private var headerSection: some View {
         VStack(spacing: 4) {
@@ -135,19 +138,6 @@ struct ContentView: View {
         }
     }
 
-    #if DEBUG
-    private var adminSection: some View {
-        HStack(spacing: 12) {
-            Button("Upload game config") {
-                Task {
-                    await vm.adminUploadGameConfig()
-                }
-            }
-            .buttonStyle(.bordered)
-            .tint(.orange)
-        }
-    }
-    #endif
 }
 
 #Preview { ContentView() }
