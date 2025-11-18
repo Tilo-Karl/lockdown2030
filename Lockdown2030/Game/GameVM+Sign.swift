@@ -45,18 +45,29 @@ extension GameVM {
 
         // Map id
         if let mid = data["mapId"] as? String {
-            self.mapId = mid
+          self.mapId = mid
         }
 
         // Prefer buildings from game.mapMeta (written by backend),
         // fall back to loading from the maps collection if missing.
-        if let mapMeta = data["mapMeta"] as? [String: Any],
-           let arr = mapMeta["buildings"] as? [[String: Any]] {
+        if let mapMeta = data["mapMeta"] as? [String: Any] {
+          if let arr = mapMeta["buildings"] as? [[String: Any]] {
             self.buildings = self.parseBuildingsArray(arr)
-        } else if !self.mapId.isEmpty {
+          } else if !self.mapId.isEmpty {
             Task { await self.loadMapBuildings(mapId: self.mapId) }
-        } else {
+          } else {
             self.buildings = []
+          }
+
+          // Optional backend palette, e.g. { "POLICE": "#123456", ... }
+          if let palette = mapMeta["buildingColors"] as? [String: String] {
+            self.buildingColors = palette
+          } else {
+            self.buildingColors = [:]
+          }
+        } else {
+          self.buildings = []
+          self.buildingColors = [:]
         }
       }
   }

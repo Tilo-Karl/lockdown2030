@@ -33,6 +33,11 @@ extension GameVM {
         return buildings.first { $0.id == id }
     }
 
+    /// Return a Color hex string for a building type, if available.
+    func buildingColorHex(for type: String) -> String? {
+        buildingColors[type]
+    }
+
     /// Enter the building on the player’s current tile, if there is one.
     func enterBuildingHere() {
         guard let b = buildingHere else { return }

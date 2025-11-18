@@ -26,7 +26,8 @@ final class GameVM: ObservableObject {
   @Published var buildings: [Building] = []
   @Published var isInsideBuilding: Bool = false
   @Published var activeBuildingId: String? = nil
-    
+  @Published var buildingColors: [String: String] = [:]
+  
   @Published var mapId: String = ""
     
   var myPlayerListener: ListenerRegistration?
