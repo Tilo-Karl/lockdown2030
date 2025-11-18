@@ -23,6 +23,9 @@ struct ContentView: View {
             // Map
             mapSection
 
+            // Building info
+            buildingInfoSection
+
             // View radius controls
             viewRadiusSection
 
@@ -31,7 +34,6 @@ struct ContentView: View {
 
             // Attack row
             attackSection
-
 
             Spacer(minLength: 0)
         }
@@ -60,7 +62,95 @@ struct ContentView: View {
             }
         }
     }
+/*
+    private var buildingInfoSection: some View {
+        Group {
+            if let pos = vm.myPos,
+               let building = vm.buildingAt(x: pos.x, y: pos.y) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Building here")
+                        .font(.subheadline)
+                        .bold()
 
+                    Text("Type: \(building.type)")
+                        .font(.caption)
+
+                    HStack(spacing: 8) {
+                        Text("Floors: \(building.floors)")
+                        Text("Tiles: \(building.tiles)")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                    Text("Root: (\(building.root.x), \(building.root.y))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(8)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+    }
+*/
+    private var buildingInfoSection: some View {
+        Group {
+            if let pos = vm.myPos,
+               let building = vm.buildingAt(x: pos.x, y: pos.y) {
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Building here")
+                            .font(.subheadline)
+                            .bold()
+
+                        if vm.isInsideBuilding,
+                           vm.activeBuildingId == building.id {
+                            Text("Inside")
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                    }
+
+                    Text("Type: \(building.type)")
+                        .font(.caption)
+
+                    HStack(spacing: 12) {
+                        Text("Floors: \(building.floors)")
+                        Text("Tiles: \(building.tiles)")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                    Text("Root: (\(building.root.x), \(building.root.y))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Divider().padding(.vertical, 4)
+
+                    // Enter / Exit button
+                    Button(
+                        vm.isInsideBuilding && vm.activeBuildingId == building.id
+                        ? "Exit building"
+                        : "Enter building"
+                    ) {
+                        if vm.isInsideBuilding && vm.activeBuildingId == building.id {
+                            vm.leaveBuilding()
+                        } else {
+                            vm.enterBuildingHere()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(10)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+    }
     private var headerSection: some View {
         VStack(spacing: 4) {
             Text(vm.gameName.isEmpty ? "Lockdown 2030" : vm.gameName)

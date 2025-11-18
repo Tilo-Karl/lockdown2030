@@ -24,6 +24,9 @@ final class GameVM: ObservableObject {
   @Published var maxViewRadius: Int = 1   // 0 = only your tile, 1 = adjacent tiles, etc.
 
   @Published var buildings: [Building] = []
+  @Published var isInsideBuilding: Bool = false
+  @Published var activeBuildingId: String? = nil
+    
   @Published var mapId: String = ""
     
   var myPlayerListener: ListenerRegistration?
