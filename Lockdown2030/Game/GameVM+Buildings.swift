@@ -5,7 +5,7 @@
 //  Created by Tilo Delau on 2025-11-17.
 //
 
-import Foundation
+import SwiftUI
 
 extension GameVM {
     
@@ -33,9 +33,40 @@ extension GameVM {
         return buildings.first { $0.id == id }
     }
 
-    /// Return a Color hex string for a building type, if available.
-    func buildingColorHex(for type: String) -> String? {
-        buildingColors[type]
+    /// Resolve the actual Color for a building using the palette from Firestore.
+    /// Returns nil if there is no building on this tile or no color in the palette.
+    func buildingColor(for building: Building?) -> Color? {
+        // No building here → let the cell fall back to neutral color
+        guard let type = building?.type else {
+            return nil
+        }
+
+        guard let hex = buildingColors[type] else {
+            print("[DEBUG] no hex color found for type =", type)
+            return nil
+        }
+
+        return colorFromHex(hex)
+    }
+
+    /// Convert a hex string from the backend (e.g. "#F97316") into a SwiftUI Color.
+    private func colorFromHex(_ hex: String) -> Color? {
+        var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if cleaned.hasPrefix("#") {
+            cleaned.removeFirst()
+        }
+
+        // Expect 6 characters (RGB). Fall back to nil on failure.
+        guard cleaned.count == 6,
+              let value = UInt64(cleaned, radix: 16) else {
+            return nil
+        }
+
+        let r = Double((value & 0xFF0000) >> 16) / 255.0
+        let g = Double((value & 0x00FF00) >> 8) / 255.0
+        let b = Double(value & 0x0000FF) / 255.0
+
+        return Color(red: r, green: g, blue: b)
     }
 
     /// Enter the building on the player’s current tile, if there is one.
@@ -83,16 +114,61 @@ extension GameVM {
         }
         do {
             let snap = try await db.collection("maps").document(mapId).getDocument()
-            guard let data = snap.data(),
-                  let meta = data["meta"] as? [String: Any],
-                  let arr = meta["buildings"] as? [[String: Any]] else {
+            guard let data = snap.data() else {
                 self.buildings = []
+                self.buildingColors = [:]
                 return
             }
 
-            self.buildings = self.parseBuildingsArray(arr)
+            // --- Buildings: support both meta.buildings and top-level buildings ---
+            var buildingsArray: [[String: Any]] = []
+
+            if
+                let meta = data["meta"] as? [String: Any],
+                let arr = meta["buildings"] as? [[String: Any]]
+            {
+                buildingsArray = arr
+            } else if let arr = data["buildings"] as? [[String: Any]] {
+                buildingsArray = arr
+            }
+
+            self.buildings = self.parseBuildingsArray(buildingsArray)
+
+            // --- Palette: support both meta.buildingPalette and top-level buildingPalette ---
+            var paletteResult: [String: String] = [:]
+
+            if let meta = data["meta"] as? [String: Any] {
+                if let palette = meta["buildingPalette"] as? [String: String] {
+                    paletteResult = palette
+                } else if let anyPalette = meta["buildingPalette"] as? [String: Any] {
+                    var normalized: [String: String] = [:]
+                    for (key, value) in anyPalette {
+                        if let s = value as? String {
+                            normalized[key] = s
+                        }
+                    }
+                    paletteResult = normalized
+                }
+            }
+
+            if paletteResult.isEmpty {
+                if let palette = data["buildingPalette"] as? [String: String] {
+                    paletteResult = palette
+                } else if let anyPalette = data["buildingPalette"] as? [String: Any] {
+                    var normalized: [String: String] = [:]
+                    for (key, value) in anyPalette {
+                        if let s = value as? String {
+                            normalized[key] = s
+                        }
+                    }
+                    paletteResult = normalized
+                }
+            }
+
+            self.buildingColors = paletteResult
         } catch {
             self.buildings = []
+            self.buildingColors = [:]
         }
     }
 }

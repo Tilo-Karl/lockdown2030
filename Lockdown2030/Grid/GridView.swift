@@ -117,7 +117,6 @@ struct GridView: View {
         }
     }
 
-    @ViewBuilder
     private func cellView(
         x: Int,
         y: Int,
@@ -128,13 +127,33 @@ struct GridView: View {
         let id = tileId(x: x, y: y)
         let building = vm.buildingAt(x: x, y: y)
 
-        GridCellView(
+        let tileLabel: String
+        if let b = building {
+            tileLabel = b.type
+        } else if let code = vm.terrainCodeAt(x: x, y: y) {
+            switch code {
+            case "0": tileLabel = "ROAD"
+            case "1": tileLabel = "PARK"
+            case "2": tileLabel = "CEMETERY"
+            case "3": tileLabel = "FOREST"
+            case "4": tileLabel = "HILLS"
+            case "5": tileLabel = "WATER"
+            default:   tileLabel = ""
+            }
+        } else {
+            tileLabel = ""
+        }
+
+        return GridCellView(
             x: x,
             y: y,
             isMe: isMe,
             isHighlighted: isHighlighted,
             building: building,
-            cellSize: tileSize
+            cellSize: tileSize,
+            buildingColor: vm.buildingColor(for: building),
+            terrainColor: vm.terrainColorAt(x: x, y: y),
+            tileLabel: tileLabel
         )
         .id(id)
         .onTapGesture {

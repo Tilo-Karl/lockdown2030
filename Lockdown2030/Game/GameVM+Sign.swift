@@ -60,10 +60,32 @@ extension GameVM {
           }
 
           // Optional backend palette, e.g. { "POLICE": "#123456", ... }
-          if let palette = mapMeta["buildingColors"] as? [String: String] {
+          if let palette = mapMeta["buildingPalette"] as? [String: String] {
             self.buildingColors = palette
           } else {
             self.buildingColors = [:]
+          }
+
+          // Terrain rows (array of strings, one per map row)
+          if let terrainArr = mapMeta["terrain"] as? [String] {
+            self.terrain = terrainArr
+          } else {
+            self.terrain = []
+          }
+
+          // Terrain color palette (hex strings keyed by terrain code "0","1",...)
+          if let tPalette = mapMeta["terrainPalette"] as? [String: String] {
+            self.terrainColors = tPalette
+          } else if let tPaletteAny = mapMeta["terrainPalette"] as? [String: Any] {
+            var result: [String: String] = [:]
+            for (key, value) in tPaletteAny {
+              if let s = value as? String {
+                result[key] = s
+              }
+            }
+            self.terrainColors = result
+          } else {
+            self.terrainColors = [:]
           }
         } else {
           self.buildings = []

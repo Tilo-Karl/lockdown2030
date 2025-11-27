@@ -27,6 +27,8 @@ final class GameVM: ObservableObject {
   @Published var isInsideBuilding: Bool = false
   @Published var activeBuildingId: String? = nil
   @Published var buildingColors: [String: String] = [:]
+  @Published var terrain: [String] = []
+  @Published var terrainColors: [String: String] = [:]
   
   @Published var mapId: String = ""
     
@@ -40,5 +42,11 @@ final class GameVM: ObservableObject {
   init() {
     Task { await signInAndLoad() }
   }
+  
+  func terrainAt(_ x: Int, _ y: Int) -> String {
+    guard y >= 0, y < terrain.count else { return "0" }
+    let row = terrain[y]
+    guard x >= 0, x < row.count else { return "0" }
+    return String(row[row.index(row.startIndex, offsetBy: x)])
+  }
 }
- 
