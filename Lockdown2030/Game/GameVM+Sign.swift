@@ -92,5 +92,8 @@ extension GameVM {
           self.buildingColors = [:]
         }
       }
+
+      // Start listening to zombies for this game
+      startZombiesListener()
   }
 }

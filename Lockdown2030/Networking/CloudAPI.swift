@@ -13,6 +13,7 @@ enum CloudAPI {
     static let join   = "\(baseEngine)/join-game"
     static let move   = "\(baseEngine)/move-player"
     static let attack = "\(baseEngine)/attack-player"
+    static let attackZombie = "\(baseEngine)/attack-zombie"
 
     /// POST JSON helper with typed request/response
     static func postJSON<T: Encodable, R: Decodable>(to url: String, body: T) async throws -> R {
@@ -78,5 +79,22 @@ struct EngineAttackReq: Codable {
 struct EngineAttackRes: Codable {
     let ok: Bool
     let targetHp: Int?
+    let reason: String?
+}
+
+struct EngineAttackZombieReq: Codable {
+    let gameId: String
+    let attackerUid: String          // attacker UID
+    let zombieId: String
+    let damage: Int?
+    let apCost: Int?
+}
+
+struct EngineAttackZombieRes: Codable {
+    let ok: Bool
+    let zombieHp: Int?
+    let playerHp: Int?
+    let zombieDidHit: Bool?
+    let zombieDamage: Int?
     let reason: String?
 }

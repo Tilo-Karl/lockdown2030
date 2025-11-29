@@ -19,11 +19,18 @@ struct GridCellView: View {
     let buildingColor: Color?
     let terrainColor: Color?
     let tileLabel: String
+    let hasZombie: Bool
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .fill(backgroundColor)
+
+            if hasZombie {
+                Text("🧟")
+                    .font(.system(size: min(cellSize * 0.7, 24)))
+                    .shadow(radius: 2)
+            }
 
             VStack(spacing: 1) {
                 Text(tileLabel)

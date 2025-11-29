@@ -144,6 +144,8 @@ struct GridView: View {
             tileLabel = ""
         }
 
+        let hasZombie = vm.hasZombie(atX: x, y: y)
+
         return GridCellView(
             x: x,
             y: y,
@@ -153,7 +155,8 @@ struct GridView: View {
             cellSize: tileSize,
             buildingColor: vm.buildingColor(for: building),
             terrainColor: vm.terrainColorAt(x: x, y: y),
-            tileLabel: tileLabel
+            tileLabel: tileLabel,
+            hasZombie: hasZombie
         )
         .id(id)
         .onTapGesture {

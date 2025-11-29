@@ -61,21 +61,4 @@ extension GameVM {
             print("Move error:", error)
         }
     }
-
-    @MainActor
-    func attack(target: String) async {
-        guard !uid.isEmpty else { print("Attack error: missing uid"); return }
-        let req = EngineAttackReq(gameId: gameId, uid: uid, targetUid: target)
-        do {
-            let res: EngineAttackRes = try await CloudAPI.postJSON(to: CloudAPI.attack, body: req)
-            if res.ok {
-                print("Attack:", ["ok": 1, "targetHp": res.targetHp ?? -1])
-            } else {
-                print("Attack failed:", res.reason ?? "unknown")
-            }
-        } catch {
-            print("Attack error:", error)
-        }
-    }
 }
-

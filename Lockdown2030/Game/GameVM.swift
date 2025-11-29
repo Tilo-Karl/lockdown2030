@@ -14,6 +14,10 @@ import os.log
 
 
 final class GameVM: ObservableObject {
+    
+  @Published var hp: Int = 100
+  @Published var ap: Int = 3
+    
   @Published var uid: String = ""
   @Published var gameName: String = ""
   @Published var gridW = 0
@@ -29,14 +33,20 @@ final class GameVM: ObservableObject {
   @Published var buildingColors: [String: String] = [:]
   @Published var terrain: [String] = []
   @Published var terrainColors: [String: String] = [:]
+    
+  @Published var zombies: [Zombie] = []
+  @Published var lastEventMessage: String? = nil
   
   @Published var mapId: String = ""
     
   var myPlayerListener: ListenerRegistration?
+    
+    
 
   let db = Firestore.firestore()
   let gameId = "lockdown2030"
   var gameListener: ListenerRegistration?
+  var zombieListener: ListenerRegistration?
   let log = Logger(subsystem: "Lockdown2030", category: "GameVM")
 
   init() {
@@ -48,5 +58,12 @@ final class GameVM: ObservableObject {
     let row = terrain[y]
     guard x >= 0, x < row.count else { return "0" }
     return String(row[row.index(row.startIndex, offsetBy: x)])
+  }
+
+  func setLastEventMessage(_ message: String) {
+    DispatchQueue.main.async {
+      self.lastEventMessage = message
+      self.log.info("Event: \(message, privacy: .public)")
+    }
   }
 }
