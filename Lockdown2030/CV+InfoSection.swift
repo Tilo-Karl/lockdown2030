@@ -169,7 +169,7 @@ struct EventLogSection: View {
                     Text("Recent event")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("You: \(vm.hp) HP / \(vm.ap) AP")
+                    Text("You: \(vm.myPlayer?.hp ?? 0) HP / \(vm.myPlayer?.ap ?? 0) AP")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(msg)

@@ -14,10 +14,11 @@ import os.log
 
 
 final class GameVM: ObservableObject {
-    
-  @Published var hp: Int = 100
-  @Published var ap: Int = 3
-    
+
+  // MARK: - Player state (mirrored from Firestore player doc)
+  @Published var myPlayer: PlayerDoc? = nil
+
+  // MARK: - Game state
   @Published var uid: String = ""
   @Published var gameName: String = ""
   @Published var gridW = 0
@@ -33,15 +34,13 @@ final class GameVM: ObservableObject {
   @Published var buildingColors: [String: String] = [:]
   @Published var terrain: [String] = []
   @Published var terrainColors: [String: String] = [:]
-    
+
   @Published var zombies: [Zombie] = []
   @Published var lastEventMessage: String? = nil
-  
+
   @Published var mapId: String = ""
-    
+
   var myPlayerListener: ListenerRegistration?
-    
-    
 
   let db = Firestore.firestore()
   let gameId = "lockdown2030"
@@ -52,7 +51,7 @@ final class GameVM: ObservableObject {
   init() {
     Task { await signInAndLoad() }
   }
-  
+
   func terrainAt(_ x: Int, _ y: Int) -> String {
     guard y >= 0, y < terrain.count else { return "0" }
     let row = terrain[y]
