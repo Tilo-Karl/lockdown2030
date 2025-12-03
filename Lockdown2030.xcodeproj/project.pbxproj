@@ -35,9 +35,33 @@
 		D79110562EBF76F70024B7FC /* Lockdown2030UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Lockdown2030UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D76E81882EDF072600213590 /* Exceptions for "Lockdown2030" folder in "Lockdown2030" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Game/Firestore.OLD,
+			);
+			target = D791103E2EBF76F50024B7FC /* Lockdown2030 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		D76E81892EDF072600213590 /* Exceptions for "Lockdown2030" folder in "Compile Sources" phase from "Lockdown2030" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = D791103B2EBF76F50024B7FC /* Sources */;
+			membershipExceptions = (
+				Game/Firestore.OLD,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D79110412EBF76F50024B7FC /* Lockdown2030 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D76E81882EDF072600213590 /* Exceptions for "Lockdown2030" folder in "Lockdown2030" target */,
+				D76E81892EDF072600213590 /* Exceptions for "Lockdown2030" folder in "Compile Sources" phase from "Lockdown2030" target */,
+			);
 			path = Lockdown2030;
 			sourceTree = "<group>";
 		};

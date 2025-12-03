@@ -19,8 +19,13 @@ extension GameVM {
     // If we don't have a uid yet, clear position and bail
     guard !uid.isEmpty else { myPos = nil; focusPos = nil; return }
 
-    let ref = db.collection("games").document(gameId)
-      .collection("players").document(uid)
+    guard let playersColRef = playersColRef else {
+      myPos = nil
+      focusPos = nil
+      return
+    }
+
+    let ref = playersColRef.document(uid)
 
     myPlayerListener = ref.addSnapshotListener { [weak self] snap, _ in
       guard let self else { return }
@@ -44,9 +49,8 @@ extension GameVM {
   }
 
   func upsertMyPlayer() {
-    guard !uid.isEmpty else { return }
-    let ref = db.collection("games").document(gameId)
-      .collection("players").document(uid)
+    guard !uid.isEmpty, let playersColRef = playersColRef else { return }
+    let ref = playersColRef.document(uid)
 
     ref.setData([
       "userId": uid,
@@ -58,4 +62,3 @@ extension GameVM {
     ], merge: true)
   }
 }
-

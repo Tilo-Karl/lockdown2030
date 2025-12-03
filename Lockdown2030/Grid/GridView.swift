@@ -129,16 +129,14 @@ struct GridView: View {
 
         let tileLabel: String
         if let b = building {
+            // Buildings keep using their type as the label
             tileLabel = b.type
-        } else if let code = vm.terrainCodeAt(x: x, y: y) {
-            switch code {
-            case "0": tileLabel = "ROAD"
-            case "1": tileLabel = "PARK"
-            case "2": tileLabel = "CEMETERY"
-            case "3": tileLabel = "FOREST"
-            case "4": tileLabel = "HILLS"
-            case "5": tileLabel = "WATER"
-            default:   tileLabel = ""
+        } else if let code = vm.tileCodeAt(x: x, y: y) {
+            // For terrain, pull the label from tileMeta if available
+            if let meta = vm.tileMeta[code], !meta.label.isEmpty {
+                tileLabel = meta.label.uppercased()
+            } else {
+                tileLabel = ""
             }
         } else {
             tileLabel = ""
@@ -154,7 +152,7 @@ struct GridView: View {
             building: building,
             cellSize: tileSize,
             buildingColor: vm.buildingColor(for: building),
-            terrainColor: vm.terrainColorAt(x: x, y: y),
+            tileColor: vm.tileColorAt(x: x, y: y),
             tileLabel: tileLabel,
             hasZombie: hasZombie
         )
@@ -179,7 +177,7 @@ struct GridView: View {
 
     private func handleTap(_ pos: Pos) {
         lastTap = pos
-        print("Tapped tile: \(pos.x) \(pos.y)")
+        vm.log.info("Tapped tile in GridView — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
         vm.handleTileTap(pos: pos)
     }
 }

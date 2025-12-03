@@ -23,9 +23,12 @@ extension GameVM {
         return
       }
 
-      try await db.collection("games")
-        .document(gameId)
-        .setData(json, merge: false)
+      guard let ref = gameDocRef else {
+        log.error("Admin config upload failed: missing gameDocRef")
+        return
+      }
+
+      try await ref.setData(json, merge: false)
 
       log.info("Admin config uploaded successfully ✅")
     } catch {

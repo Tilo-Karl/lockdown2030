@@ -1,5 +1,5 @@
 //
-//  ContentView+InfoSections.swift
+//  CV+InfoSection.swift
 //  Lockdown2030
 //
 
@@ -13,8 +13,8 @@ struct TileDetailsSection: View {
 
     var body: some View {
         Group {
-            if let pos = vm.myPos {
-                tileContent(for: pos)
+            if let tile = vm.tileHere {
+                tileContent(for: tile)
             } else {
                 EmptyView()
             }
@@ -22,15 +22,15 @@ struct TileDetailsSection: View {
     }
 
     @ViewBuilder
-    private func tileContent(for pos: Pos) -> some View {
-        let building = vm.buildingAt(x: pos.x, y: pos.y)
-        let zombiesHere = vm.zombies.filter { $0.pos.x == pos.x && $0.pos.y == pos.y }
+    private func tileContent(for tile: GameVM.TileSnapshot) -> some View {
+        let building = tile.building
+        let zombiesHere = tile.zombies
 
         if building == nil && zombiesHere.isEmpty {
             EmptyView()
         } else {
             tileCard(
-                pos: pos,
+                tile: tile,
                 building: building,
                 zombies: zombiesHere
             )
@@ -41,12 +41,12 @@ struct TileDetailsSection: View {
 
     @ViewBuilder
     private func tileCard(
-        pos: Pos,
+        tile: GameVM.TileSnapshot,
         building: GameVM.Building?,
         zombies: [GameVM.Zombie]
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            headerRow(pos: pos, building: building, zombies: zombies)
+            headerRow(tile: tile, building: building, zombies: zombies)
 
             if let b = building {
                 buildingSummary(b)
@@ -68,23 +68,46 @@ struct TileDetailsSection: View {
 
     // MARK: - Pieces
 
-    @ViewBuilder
     private func headerRow(
-        pos: Pos,
+        tile: GameVM.TileSnapshot,
         building: GameVM.Building?,
         zombies: [GameVM.Zombie]
     ) -> some View {
-        HStack {
-            // Left: tile label
-            Text(building?.type ?? "Tile")
-                .font(.subheadline)
-                .bold()
+        let code = tile.tileCode
+        let tileName: String
+        if let meta = vm.tileMeta[code], !meta.label.isEmpty {
+            tileName = meta.label
+        } else {
+            tileName = "Unknown"
+        }
 
-            Text("(\(pos.x), \(pos.y))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        let titleText: String
+        let subtitleText: String
+
+        if let b = building {
+            titleText = b.type
+            subtitleText = tileName
+        } else {
+            titleText = tileName
+            subtitleText = "Tile"
+        }
+
+        return HStack {
+            // Left: tile / building label
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titleText)
+                    .font(.subheadline)
+                    .bold()
+                Text(subtitleText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
+
+            Text("(\(tile.pos.x), \(tile.pos.y))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             // Right: small zombie badge if any
             if !zombies.isEmpty {
@@ -98,7 +121,6 @@ struct TileDetailsSection: View {
         }
     }
 
-    @ViewBuilder
     private func buildingSummary(_ b: GameVM.Building) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Building")
@@ -111,7 +133,6 @@ struct TileDetailsSection: View {
         }
     }
 
-    @ViewBuilder
     private func zombieSummary(_ z: GameVM.Zombie, count: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Zombies")
@@ -124,7 +145,6 @@ struct TileDetailsSection: View {
         }
     }
 
-    @ViewBuilder
     private func actionRow(
         building: GameVM.Building?,
         zombies: [GameVM.Zombie]

@@ -8,7 +8,7 @@
 
 extension GameVM {
     func handleTileTap(pos: Pos) {
-        print("Tapped tile:", pos.x, pos.y)
+        log.info("Tapped tile in handleTileTap — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
 
         // We need our current position to interpret the tap.
         guard let current = myPos else { return }
@@ -17,9 +17,9 @@ extension GameVM {
         if pos.x == current.x && pos.y == current.y {
             if let building = buildingAt(x: pos.x, y: pos.y) {
                 // For now, just log it; later we can set selectedBuilding / call an engine action.
-                print("Tapped own tile with building: \(building.type) @ (\(building.root.x), \(building.root.y))")
+                log.info("Tapped own tile with building: \(building.type, privacy: .public) @ (\(building.root.x, privacy: .public), \(building.root.y, privacy: .public))")
             } else {
-                print("Tapped own tile, but no building here.")
+                log.info("Tapped own tile, but no building here.")
             }
             return
         }

@@ -17,7 +17,7 @@ struct GridCellView: View {
     let building: GameVM.Building?
     let cellSize: CGFloat
     let buildingColor: Color?
-    let terrainColor: Color?
+    let tileColor: Color?
     let tileLabel: String
     let hasZombie: Bool
 
@@ -56,7 +56,7 @@ struct GridCellView: View {
             return .yellow.opacity(0.7)
         } else if let color = buildingColor {
             return color
-        } else if let tColor = terrainColor {
+        } else if let tColor = tileColor {
             return tColor
         } else {
             return .gray.opacity(0.2)

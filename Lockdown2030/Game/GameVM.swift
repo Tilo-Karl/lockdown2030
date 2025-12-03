@@ -12,8 +12,19 @@ import FirebaseAuth
 import FirebaseFirestore
 import os.log
 
-
 final class GameVM: ObservableObject {
+
+  // MARK: - Tile meta (from Firestore map meta)
+
+  struct TileMeta {
+    let label: String
+    let colorHex: String
+    let blocksMovement: Bool
+    let blocksVision: Bool
+    let playerSpawnAllowed: Bool
+    let zombieSpawnAllowed: Bool
+    let moveCost: Int?
+  }
 
   // MARK: - Player state (mirrored from Firestore player doc)
   @Published var myPlayer: PlayerDoc? = nil
@@ -21,42 +32,42 @@ final class GameVM: ObservableObject {
   // MARK: - Game state
   @Published var uid: String = ""
   @Published var gameName: String = ""
-  @Published var gridW = 0
-  @Published var gridH = 0
+  @Published var gridW: Int = 0
+  @Published var gridH: Int = 0
   @Published var status: String = ""
   @Published var myPos: Pos? = nil
   @Published var focusPos: Pos? = nil
-  @Published var maxViewRadius: Int = 1   // 0 = only your tile, 1 = adjacent tiles, etc.
+  /// 0 = only your tile, 1 = adjacent tiles, etc.
+  @Published var maxViewRadius: Int = 1
 
   @Published var buildings: [Building] = []
   @Published var isInsideBuilding: Bool = false
   @Published var activeBuildingId: String? = nil
   @Published var buildingColors: [String: String] = [:]
-  @Published var terrain: [String] = []
-  @Published var terrainColors: [String: String] = [:]
+
+  /// Canonical tile rows from mapMeta.terrain (array of strings).
+  @Published var tileRows: [String] = []
+
+  /// Per-tile metadata (labels, colors, movement rules, etc.) keyed by tile code.
+  @Published var tileMeta: [String: TileMeta] = [:]
 
   @Published var zombies: [Zombie] = []
   @Published var lastEventMessage: String? = nil
 
   @Published var mapId: String = ""
 
+  // MARK: - Listeners / Firestore
+
   var myPlayerListener: ListenerRegistration?
+  var gameListener: ListenerRegistration?
+  var zombieListener: ListenerRegistration?
 
   let db = Firestore.firestore()
   let gameId = "lockdown2030"
-  var gameListener: ListenerRegistration?
-  var zombieListener: ListenerRegistration?
   let log = Logger(subsystem: "Lockdown2030", category: "GameVM")
 
   init() {
     Task { await signInAndLoad() }
-  }
-
-  func terrainAt(_ x: Int, _ y: Int) -> String {
-    guard y >= 0, y < terrain.count else { return "0" }
-    let row = terrain[y]
-    guard x >= 0, x < row.count else { return "0" }
-    return String(row[row.index(row.startIndex, offsetBy: x)])
   }
 
   func setLastEventMessage(_ message: String) {
@@ -64,5 +75,38 @@ final class GameVM: ObservableObject {
       self.lastEventMessage = message
       self.log.info("Event: \(message, privacy: .public)")
     }
+  }
+
+  // MARK: - Tile snapshot helpers
+
+  /// Lightweight snapshot of everything interesting on a single tile.
+  struct TileSnapshot {
+    let pos: Pos
+    /// Raw tile code (e.g. "0" = ROAD, "5" = WATER).
+    let tileCode: String
+    let building: Building?
+    let zombies: [Zombie]
+  }
+
+  /// Current tile the player is standing on, if we know their position.
+  var tileHere: TileSnapshot? {
+    guard let pos = myPos else { return nil }
+    return tileSnapshot(at: pos)
+  }
+
+  /// Build a unified view of a tile at a given position.
+  func tileSnapshot(at pos: Pos) -> TileSnapshot {
+    let tileCode = tileCodeAt(x: pos.x, y: pos.y) ?? "0"
+    let b = buildingAt(x: pos.x, y: pos.y)
+    let zs = zombies.filter { z in
+      z.pos.x == pos.x && z.pos.y == pos.y
+    }
+    return TileSnapshot(pos: pos, tileCode: tileCode, building: b, zombies: zs)
+  }
+
+  /// Convenience: meta for the tile at a given position, if available.
+  func tileMeta(at pos: Pos) -> TileMeta? {
+    guard let code = tileCodeAt(x: pos.x, y: pos.y) else { return nil }
+    return tileMeta[code]
   }
 }
