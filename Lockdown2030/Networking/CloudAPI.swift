@@ -14,6 +14,7 @@ enum CloudAPI {
     static let move   = "\(baseEngine)/move-player"
     static let attack = "\(baseEngine)/attack-player"
     static let attackZombie = "\(baseEngine)/attack-zombie"
+    static let tickGame = "\(baseEngine)/tick-game"
 
     /// POST JSON helper with typed request/response
     static func postJSON<T: Encodable, R: Decodable>(to url: String, body: T) async throws -> R {
@@ -97,4 +98,18 @@ struct EngineAttackZombieRes: Codable {
     let zombieDidHit: Bool?
     let zombieDamage: Int?
     let reason: String?
+    let error: String?
+}
+
+struct EngineTickReq: Codable {
+    let gameId: String
+}
+
+struct EngineTickRes: Codable {
+    let ok: Bool
+    let gameId: String?
+    let zombiesMoved: Int?
+    let zombiesTotal: Int?
+    let playersUpdated: Int?
+    let message: String?
 }

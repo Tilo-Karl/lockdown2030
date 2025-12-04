@@ -29,21 +29,46 @@ extension GameVM {
 
     myPlayerListener = ref.addSnapshotListener { [weak self] snap, _ in
       guard let self else { return }
-      guard let data = snap?.data(),
-            let pos = data["pos"] as? [String: Any],
-            let x = pos["x"] as? Int,
-            let y = pos["y"] as? Int else {
-        // If the doc disappeared or is missing pos, clear it
+      guard let data = snap?.data() else {
+        // Doc disappeared
         self.myPos = nil
         self.focusPos = nil
+        self.myPlayer = nil
         return
       }
 
-      let newPos = Pos(x: x, y: y)
-      // Only update if it changed, to avoid pointless scroll spam
-      if self.myPos != newPos {
-        self.myPos = newPos
-        self.focusPos = newPos
+      // Position
+      var newPos: Pos? = nil
+      if let pos = data["pos"] as? [String: Any],
+         let x = pos["x"] as? Int,
+         let y = pos["y"] as? Int {
+        newPos = Pos(x: x, y: y)
+      }
+
+      // HP / AP / alive
+      let hp = data["hp"] as? Int
+      let ap = data["ap"] as? Int
+      let alive = data["alive"] as? Bool
+      let displayName = data["displayName"] as? String
+
+      // Update myPlayer snapshot used by UI
+      self.myPlayer = PlayerDoc(
+        userId: self.uid,
+        displayName: displayName,
+        pos: newPos,
+        hp: hp,
+        ap: ap,
+        alive: alive
+      )
+
+      // Update map focus if position changed
+      if let newPos {
+        if self.myPos != newPos {
+          self.myPos = newPos
+          self.focusPos = newPos
+        }
+      } else {
+        self.myPos = nil
       }
     }
   }

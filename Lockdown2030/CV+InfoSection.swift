@@ -195,6 +195,13 @@ struct EventLogSection: View {
                     Text(msg)
                         .font(.caption)
                         .multilineTextAlignment(.leading)
+                    
+                    Button("Tick game") {
+                        Task {
+                            await vm.tickGame()
+                        }
+                    }
+                    .font(.caption2)
                 }
                 .padding(10)
                 .background(.thinMaterial)

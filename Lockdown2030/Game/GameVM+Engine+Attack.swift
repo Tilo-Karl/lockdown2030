@@ -82,9 +82,20 @@ extension GameVM {
                 self.setLastEventMessage(parts.joined(separator: " "))
 
             } else {
-                print("Attack zombie failed:", res.reason ?? "unknown")
-                let reason = res.reason ?? "unknown"
-                self.setLastEventMessage("Attack failed: \(reason)")
+                // Prefer backend error if reason is just "internal"
+                let backendReason = res.reason
+                let backendError  = res.error
+                
+                print("Attack zombie failed. reason=\(backendReason ?? "nil"), error=\(backendError ?? "nil")")
+                
+                let reasonToShow: String
+                if backendReason == "internal" || backendReason == nil {
+                    reasonToShow = backendError ?? "internal"
+                } else {
+                    reasonToShow = backendReason ?? "unknown"
+                }
+                
+                self.setLastEventMessage("Attack failed: \(reasonToShow)")
             }
         } catch {
             print("Attack zombie error:", error)
