@@ -43,7 +43,7 @@ extension GameVM {
             guard let self else { return }
 
             if let err = err {
-                self.log.error("Game doc listener error: \(err.localizedDescription)")
+                print("Game doc listener ERROR: \(err.localizedDescription)")
                 return
             }
 
@@ -164,15 +164,15 @@ extension GameVM {
             guard let self else { return }
 
             if let err = err {
-                self.log.error("Zombie listener error: \(err.localizedDescription)")
+                print("Zombie listener ERROR: \(err.localizedDescription)")
                 return
             }
 
             let docs = snap?.documents ?? []
-
+            
             let mapped: [Zombie] = docs.compactMap { doc in
                 let data = doc.data()
-
+                
                 guard
                     let type = data["type"] as? String,
                     let kind = data["kind"] as? String,
@@ -184,7 +184,7 @@ extension GameVM {
                 else {
                     return nil
                 }
-
+                
                 return Zombie(
                     id: doc.documentID,
                     type: type,
@@ -205,5 +205,64 @@ extension GameVM {
     func stopZombiesListener() {
         zombieListener?.remove()
         zombieListener = nil
+    }
+
+    // MARK: - Players listener (all players in game)
+
+    /// Listen to games/{gameId}/players and keep `players` in sync.
+    @MainActor
+    func startPlayersListener() {
+        guard let playersColRef else { return }
+
+        // Tear down any previous listener
+        playersListener?.remove()
+
+        playersListener = playersColRef.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+
+            if let err = err {
+                print("Players listener ERROR: \(err.localizedDescription)")
+                return
+            }
+
+            let docs = snap?.documents ?? []
+
+            let mapped: [PlayerDoc] = docs.compactMap { doc in
+                let data = doc.data()
+
+                let userId = (data["userId"] as? String) ?? doc.documentID
+                let displayName = data["displayName"] as? String
+
+                var pos: Pos? = nil
+                if let posDict = data["pos"] as? [String: Any],
+                   let x = posDict["x"] as? Int,
+                   let y = posDict["y"] as? Int {
+                    pos = Pos(x: x, y: y)
+                }
+
+                let hp = data["hp"] as? Int
+                let ap = data["ap"] as? Int
+                let alive = data["alive"] as? Bool
+
+                return PlayerDoc(
+                    userId: userId,
+                    displayName: displayName,
+                    pos: pos,
+                    hp: hp,
+                    ap: ap,
+                    alive: alive
+                )
+            }
+
+            DispatchQueue.main.async {
+                self.players = mapped
+            }
+        }
+    }
+
+    @MainActor
+    func stopPlayersListener() {
+        playersListener?.remove()
+        playersListener = nil
     }
 }

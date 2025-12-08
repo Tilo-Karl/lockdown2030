@@ -27,11 +27,8 @@ struct GridViewport {
         baseCellSize: CGFloat
     ) -> CGFloat {
         let cols = maxX - minX + 1
-        let rows = maxY - minY + 1
         let availableWidth = geo.size.width - CGFloat(cols + 1) * 2
-        let availableHeight = geo.size.height - CGFloat(rows + 1) * 2
-        let dynamicSize = min(availableWidth / CGFloat(cols),
-                              availableHeight / CGFloat(rows))
+        let dynamicSize = availableWidth / CGFloat(cols)
         return max(baseCellSize, dynamicSize)
     }
     

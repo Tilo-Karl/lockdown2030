@@ -49,14 +49,18 @@ extension GameVM {
         return colorFromHex(hex)
     }
 
-    /// Convert a hex string from the backend (e.g. "#F97316") into a SwiftUI Color.
+    /// Convert a hex string from the backend (e.g. "#F97316" or "#F97316FF") into a SwiftUI Color.
     private func colorFromHex(_ hex: String) -> Color? {
         var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if cleaned.hasPrefix("#") {
             cleaned.removeFirst()
         }
 
-        // Expect 6 characters (RGB). Fall back to nil on failure.
+        // Support both RGB ("RRGGBB") and RGBA ("RRGGBBAA") by dropping the alpha if present.
+        if cleaned.count == 8 {
+            cleaned = String(cleaned.prefix(6))
+        }
+
         guard cleaned.count == 6,
               let value = UInt64(cleaned, radix: 16) else {
             return nil

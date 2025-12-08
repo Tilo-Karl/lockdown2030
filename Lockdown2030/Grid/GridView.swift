@@ -9,14 +9,19 @@ import SwiftUI
 
 struct GridView: View {
     @ObservedObject var vm: GameVM
-    /// Optional per-device view radius. If nil, we fall back to vm.maxViewRadius.
-    let viewRadius: Int?
+    /// Internal zoom radius (how far around the player we render).
+    @State private var zoomRadius: Int
     @State private var lastTap: Pos? = nil
-    private let cellSize: CGFloat = 44
+    /// Base tile size (in points) used as input to the viewport’s sizing logic.
+    /// Defaults to `GridConfig.default.minCellSize` so ContentView and GridView
+    /// share the same notion of “minimum tile size”.
+    private let baseCellSize: CGFloat
 
-    init(vm: GameVM, viewRadius: Int? = nil) {
+    init(vm: GameVM, viewRadius: Int? = nil, cellSize: CGFloat = GridConfig.default.minCellSize) {
         self.vm = vm
-        self.viewRadius = viewRadius
+        self.baseCellSize = cellSize
+        // Seed the zoom radius from the caller if provided, otherwise use the engine’s max view radius.
+        _zoomRadius = State(initialValue: viewRadius ?? vm.maxViewRadius)
     }
 
     var body: some View {
@@ -31,8 +36,13 @@ struct GridView: View {
         if vm.gridW > 0 && vm.gridH > 0 {
             ScrollViewReader { proxy in
                 ScrollView([.vertical, .horizontal]) {
-                    VStack(spacing: 2) {
-                        gridContent(geo: geo)
+                    ZStack(alignment: .bottomTrailing) {
+                        VStack(spacing: 2) {
+                            gridContent(geo: geo)
+                        }
+
+                        zoomControls
+                            .padding(8)
                     }
                     .padding(.vertical, 10)
                 }
@@ -55,7 +65,7 @@ struct GridView: View {
                         proxy.scrollTo(id, anchor: .center)
                     }
                 }
-                .frame(minHeight: 200)
+                //.frame(minHeight: 200)
             }
         } else {
             Text("Waiting for map…")
@@ -67,7 +77,7 @@ struct GridView: View {
     private func gridContent(geo: GeometryProxy) -> some View {
         if let p = vm.myPos {
             let centerPos = clampedToGrid(p)
-            let radius = max(0, viewRadius ?? vm.maxViewRadius)
+            let radius = max(0, min(zoomRadius, vm.maxViewRadius))
 
             let viewport = GridViewport(
                 gridW: vm.gridW,
@@ -78,7 +88,7 @@ struct GridView: View {
 
             let tileSize = viewport.tileSize(
                 in: geo,
-                baseCellSize: cellSize
+                baseCellSize: baseCellSize
             )
 
             ForEach(viewport.yRange, id: \.self) { y in
@@ -86,12 +96,17 @@ struct GridView: View {
                     ForEach(viewport.xRange, id: \.self) { x in
                         let isMe = (centerPos.x == x && centerPos.y == y)
                         let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
+                        let isTargetZombie =
+                            vm.interactionKind == .zombie &&
+                            vm.interactionPos?.x == x &&
+                            vm.interactionPos?.y == y
 
                         cellView(
                             x: x,
                             y: y,
                             isMe: isMe,
                             isHighlighted: isHighlighted,
+                            isTargetZombie: isTargetZombie,
                             tileSize: tileSize
                         )
                     }
@@ -103,13 +118,18 @@ struct GridView: View {
                     ForEach(0 ..< vm.gridW, id: \.self) { x in
                         let isMe = (vm.myPos?.x == x && vm.myPos?.y == y)
                         let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
+                        let isTargetZombie =
+                            vm.interactionKind == .zombie &&
+                            vm.interactionPos?.x == x &&
+                            vm.interactionPos?.y == y
 
                         cellView(
                             x: x,
                             y: y,
                             isMe: isMe,
                             isHighlighted: isHighlighted,
-                            tileSize: cellSize
+                            isTargetZombie: isTargetZombie,
+                            tileSize: baseCellSize
                         )
                     }
                 }
@@ -122,10 +142,12 @@ struct GridView: View {
         y: Int,
         isMe: Bool,
         isHighlighted: Bool,
+        isTargetZombie: Bool,
         tileSize: CGFloat
     ) -> some View {
         let id = tileId(x: x, y: y)
         let building = vm.buildingAt(x: x, y: y)
+        let pos = Pos(x: x, y: y)
 
         let tileLabel: String
         if let b = building {
@@ -142,24 +164,85 @@ struct GridView: View {
             tileLabel = ""
         }
 
-        let hasZombie = vm.hasZombie(atX: x, y: y)
+        let zombiesHere = vm.zombies.filter { z in
+            z.pos.x == x && z.pos.y == y
+        }
+        // Other players on this tile (excluding me)
+        let otherPlayersHere = vm.players.filter { p in
+            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
+        }
+        let hasZombie = !zombiesHere.isEmpty
 
         return GridCellView(
             x: x,
             y: y,
             isMe: isMe,
             isHighlighted: isHighlighted,
+            isTargetZombie: isTargetZombie,
             building: building,
             cellSize: tileSize,
             buildingColor: vm.buildingColor(for: building),
             tileColor: vm.tileColorAt(x: x, y: y),
             tileLabel: tileLabel,
-            hasZombie: hasZombie
+            hasZombie: hasZombie,
+            zombieCount: zombiesHere.count,
+            otherPlayerCount: otherPlayersHere.count,
+            humanCount: 0,
+            itemCount: 0,
+            onTileTap: { [weak vm] in
+                guard let vm = vm else { return }
+                vm.log.info("Tapped tile in GridView — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
+                vm.handleTileTap(pos: pos)
+            },
+            onZombieTap: { [weak vm] in
+                vm?.handleZombieTap(pos: pos)
+            },
+            onHumanTap: { [weak vm] in
+                vm?.handleHumanTap(pos: pos)
+            },
+            onItemTap: { [weak vm] in
+                vm?.handleItemTap(pos: pos)
+            }
         )
         .id(id)
-        .onTapGesture {
-            handleTap(Pos(x: x, y: y))
+    }
+
+    // MARK: - Zoom controls
+
+    @ViewBuilder
+    private var zoomControls: some View {
+        // Clamp radius safely
+        let clampedRadius = max(0, min(zoomRadius, vm.maxViewRadius))
+        let zoomFactor = clampedRadius + 1
+
+        VStack(spacing: 4) {
+            Button(action: {
+                if zoomRadius > 0 {
+                    zoomRadius -= 1
+                }
+            }) {
+                Text("+")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.bordered)
+
+            Text("\(zoomFactor)x")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Button(action: {
+                if zoomRadius < vm.maxViewRadius {
+                    zoomRadius += 1
+                }
+            }) {
+                Text("–")
+                    .font(.subheadline)
+            }
+            .buttonStyle(.bordered)
         }
+        .padding(4)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     // MARK: - Helpers

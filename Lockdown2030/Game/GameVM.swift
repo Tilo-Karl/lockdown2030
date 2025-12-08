@@ -28,6 +28,8 @@ final class GameVM: ObservableObject {
 
   // MARK: - Player state (mirrored from Firestore player doc)
   @Published var myPlayer: PlayerDoc? = nil
+  /// All players in the current game (including me, if subscribed).
+  @Published var players: [PlayerDoc] = []
 
   // MARK: - Game state
   @Published var uid: String = ""
@@ -39,6 +41,21 @@ final class GameVM: ObservableObject {
   @Published var focusPos: Pos? = nil
   /// 0 = only your tile, 1 = adjacent tiles, etc.
   @Published var maxViewRadius: Int = 1
+
+  // MARK: - Interaction state (what the player has selected)
+
+  enum InteractionKind {
+    case tile
+    case zombie
+    case human
+    case item
+  }
+
+  /// Position the user is currently interacting with (tap target).
+  @Published var interactionPos: Pos? = nil
+
+  /// What kind of thing is selected at `interactionPos`.
+  @Published var interactionKind: InteractionKind? = nil
 
   @Published var buildings: [Building] = []
   @Published var isInsideBuilding: Bool = false
@@ -61,6 +78,7 @@ final class GameVM: ObservableObject {
   var myPlayerListener: ListenerRegistration?
   var gameListener: ListenerRegistration?
   var zombieListener: ListenerRegistration?
+  var playersListener: ListenerRegistration?
 
   let db = Firestore.firestore()
   let gameId = "lockdown2030"

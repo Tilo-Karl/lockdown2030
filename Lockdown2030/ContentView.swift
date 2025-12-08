@@ -13,26 +13,23 @@ struct ContentView: View {
     @State private var viewRadius: Int = 1
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             // Header
             headerSection
 
-            Divider()
-                .padding(.vertical, 4)
+            //Divider()
+             //   .padding(.vertical, 4)
 
             primaryActionsSection
 
             mapSection
 
-            viewRadiusSection
+            interactionSection
 
-            TileDetailsSection(vm: vm)
-            EventLogSection(vm: vm)
-            
+            chatSection
+
             // Attack row
             //attackSection
-
-            Spacer(minLength: 0)
         }
         .padding(.vertical, 16)
         .padding(.horizontal)
@@ -50,8 +47,14 @@ extension ContentView {
         Group {
             if !vm.uid.isEmpty && vm.gridW > 0 && vm.gridH > 0 {
                 GridView(vm: vm, viewRadius: viewRadius)
+                    .aspectRatio(1, contentMode: .fit)
                     .padding(.top, 4)
-                    .frame(minHeight: 220)
+                    .padding(.bottom, 4)
+                    .overlay(
+                        Rectangle()
+                            .stroke(Color.red.opacity(0.9), lineWidth: 1)
+                    )
+                 
             } else {
                 Text("Join a game to see the map.")
                     .font(.subheadline)
@@ -65,49 +68,40 @@ extension ContentView {
 // MARK: - Header & Controls
 extension ContentView {
     fileprivate var headerSection: some View {
-        VStack(spacing: 4) {
+        let hp = vm.myPlayer?.hp ?? 0
+        let ap = vm.myPlayer?.ap ?? 0
+
+        return VStack(spacing: 4) {
             Text(vm.gameName.isEmpty ? "Lockdown 2030" : vm.gameName)
                 .font(.title2).bold()
-
+            
             Text("Status: \(vm.status) • \(vm.gridW)x\(vm.gridH) • R\(vm.maxViewRadius)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-
+            
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    Text("❤️")
+                    Text("\(hp) HP")
+                }
+                HStack(spacing: 4) {
+                    Text("⚡️")
+                    Text("\(ap) AP")
+                }
+            }
+            .font(.caption)
+            
             if !vm.uid.isEmpty {
                 Text("UID: \(vm.uid)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
+            
             if let p = vm.myPos {
                 Text("You: (\(p.x), \(p.y))")
                     .font(.caption2)
                     .foregroundStyle(.blue)
             }
-        }
-    }
-
-    fileprivate var viewRadiusSection: some View {
-        HStack(spacing: 8) {
-            Text("View radius: \(viewRadius)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            Button("-") {
-                if viewRadius < vm.maxViewRadius {
-                    viewRadius += 1
-                }
-            }
-            .buttonStyle(.bordered)
-
-            Button("+") {
-                if viewRadius > 0 {
-                    viewRadius -= 1
-                }
-            }
-            .buttonStyle(.bordered)
         }
     }
 
@@ -125,6 +119,90 @@ extension ContentView {
         }
     }
 
+    fileprivate var interactionSection: some View {
+        Group {
+            if let pos = vm.interactionPos, let kind = vm.interactionKind {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(interactionTitle(for: kind))
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text("(\(pos.x), \(pos.y))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Simple description placeholder for now.
+                    Text(interactionDescription(for: kind))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Spacer()
+                        Button(interactionButtonLabel(for: kind)) {
+                            switch kind {
+                            case .zombie:
+                                vm.attackSelected()
+                            case .tile, .human, .item:
+                                // No concrete actions yet for these kinds.
+                                break
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        // For now, only attacks on zombies are actionable.
+                        .disabled(kind != .zombie)
+                    }
+                }
+                .padding(8)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    fileprivate var chatSection: some View {
+        VStack(spacing: 4) {
+            // Title / label
+            HStack {
+                Text("Radio / Chat")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+
+            // Messages area (placeholder for now)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("[System] Chat coming soon…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Input bar (non-functional placeholder)
+            HStack(spacing: 8) {
+                TextField("Type message…", text: .constant(""))
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(true)
+                Button {
+                    // no-op for now
+                } label: {
+                    Text("Send")
+                }
+                .buttonStyle(.bordered)
+                .disabled(true)
+            }
+            .font(.caption2)
+        }
+        .padding(8)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(maxHeight: 160) // fixed-ish height so only this scrolls
+    }
+
     fileprivate var attackSection: some View {
         HStack(spacing: 12) {
             TextField("target uid…", text: $targetUid)
@@ -136,6 +214,37 @@ extension ContentView {
                 Task { await vm.attack(target: t) }
             }
             .buttonStyle(.bordered)
+        }
+    }
+
+    private func interactionTitle(for kind: GameVM.InteractionKind) -> String {
+        switch kind {
+        case .tile:   return "Tile"
+        case .zombie: return "Zombie"
+        case .human:  return "Human"
+        case .item:   return "Item"
+        }
+    }
+
+    private func interactionDescription(for kind: GameVM.InteractionKind) -> String {
+        switch kind {
+        case .tile:
+            return "You are standing here."
+        case .zombie:
+            return "Zombie on your tile. Future: inspect and attack."
+        case .human:
+            return "Human on your tile. Future: talk / inspect."
+        case .item:
+            return "Item on your tile. Future: pick up."
+        }
+    }
+
+    private func interactionButtonLabel(for kind: GameVM.InteractionKind) -> String {
+        switch kind {
+        case .tile:   return "Use tile"
+        case .zombie: return "Attack"
+        case .human:  return "Talk"
+        case .item:   return "Pick up"
         }
     }
 }

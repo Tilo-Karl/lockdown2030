@@ -39,6 +39,26 @@ struct TileDetailsSection: View {
 
     // MARK: - Card
 
+    private func hudRow() -> some View {
+        HStack(spacing: 16) {
+            HStack(spacing: 4) {
+                Text("❤️")
+                Text("\(vm.myPlayer?.hp ?? 0) HP")
+            }
+            .font(.caption2)
+            .foregroundStyle(.primary)
+
+            HStack(spacing: 4) {
+                Text("⚡️")
+                Text("\(vm.myPlayer?.ap ?? 0) AP")
+            }
+            .font(.caption2)
+            .foregroundStyle(.primary)
+
+            Spacer()
+        }
+    }
+
     @ViewBuilder
     private func tileCard(
         tile: GameVM.TileSnapshot,
@@ -46,7 +66,25 @@ struct TileDetailsSection: View {
         zombies: [GameVM.Zombie]
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            hudRow()
             headerRow(tile: tile, building: building, zombies: zombies)
+            
+            if let msg = vm.lastEventMessage, !msg.isEmpty {
+                Divider()
+                    .padding(.vertical, 4)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recent event")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("❤️ \(vm.myPlayer?.hp ?? 0)  ⚡️ \(vm.myPlayer?.ap ?? 0) AP")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(msg)
+                        .font(.caption)
+                        .multilineTextAlignment(.leading)
+                }
+            }
 
             if let b = building {
                 buildingSummary(b)
@@ -98,6 +136,7 @@ struct TileDetailsSection: View {
                 Text(titleText)
                     .font(.subheadline)
                     .bold()
+                
                 Text(subtitleText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -164,7 +203,7 @@ struct TileDetailsSection: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-
+            
             if let firstZombie = zombies.first {
                 Button("Attack zombie") {
                     Task {
@@ -173,7 +212,7 @@ struct TileDetailsSection: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-
+            
             Spacer()
         }
     }
@@ -183,32 +222,6 @@ struct EventLogSection: View {
     @ObservedObject var vm: GameVM
 
     var body: some View {
-        Group {
-            if let msg = vm.lastEventMessage, !msg.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Recent event")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("You: \(vm.myPlayer?.hp ?? 0) HP / \(vm.myPlayer?.ap ?? 0) AP")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(msg)
-                        .font(.caption)
-                        .multilineTextAlignment(.leading)
-                    
-                    Button("Tick game") {
-                        Task {
-                            await vm.tickGame()
-                        }
-                    }
-                    .font(.caption2)
-                }
-                .padding(10)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else {
-                EmptyView()
-            }
-        }
+        EmptyView()
     }
 }

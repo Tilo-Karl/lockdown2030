@@ -30,5 +30,8 @@ extension GameVM {
 
     // Start listening to zombies for this game
     startZombiesListener()
+
+    // Start listening to all players for this game
+    startPlayersListener()
   }
 }
