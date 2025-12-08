@@ -65,7 +65,6 @@ struct GridView: View {
                         proxy.scrollTo(id, anchor: .center)
                     }
                 }
-                //.frame(minHeight: 200)
             }
         } else {
             Text("Waiting for map…")
@@ -77,116 +76,29 @@ struct GridView: View {
     private func gridContent(geo: GeometryProxy) -> some View {
         if let p = vm.myPos {
             let centerPos = clampedToGrid(p)
-            let radius = max(0, min(zoomRadius, vm.maxViewRadius))
-
-            let viewport = GridViewport(
-                gridW: vm.gridW,
-                gridH: vm.gridH,
-                center: centerPos,
-                radius: radius
-            )
-
-            let tileSize = viewport.tileSize(
-                in: geo,
-                baseCellSize: baseCellSize
-            )
-
-            ForEach(viewport.yRange, id: \.self) { y in
-                HStack(spacing: 2) {
-                    ForEach(viewport.xRange, id: \.self) { x in
-                        let isMe = (centerPos.x == x && centerPos.y == y)
-                        let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
-                        let isTargetZombie =
-                            vm.interactionKind == .zombie &&
-                            vm.interactionPos?.x == x &&
-                            vm.interactionPos?.y == y
-
-                        cellView(
-                            x: x,
-                            y: y,
-                            isMe: isMe,
-                            isHighlighted: isHighlighted,
-                            isTargetZombie: isTargetZombie,
-                            tileSize: tileSize
-                        )
-                    }
-                }
-            }
+            visibleGrid(geo: geo, centerPos: centerPos)
         } else {
-            ForEach(0 ..< vm.gridH, id: \.self) { y in
-                HStack(spacing: 2) {
-                    ForEach(0 ..< vm.gridW, id: \.self) { x in
-                        let isMe = (vm.myPos?.x == x && vm.myPos?.y == y)
-                        let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
-                        let isTargetZombie =
-                            vm.interactionKind == .zombie &&
-                            vm.interactionPos?.x == x &&
-                            vm.interactionPos?.y == y
-
-                        cellView(
-                            x: x,
-                            y: y,
-                            isMe: isMe,
-                            isHighlighted: isHighlighted,
-                            isTargetZombie: isTargetZombie,
-                            tileSize: baseCellSize
-                        )
-                    }
-                }
-            }
+            fullGridFallback()
         }
     }
 
-    private func cellView(
-        x: Int,
-        y: Int,
-        isMe: Bool,
-        isHighlighted: Bool,
-        isTargetZombie: Bool,
-        tileSize: CGFloat
-    ) -> some View {
-        let id = tileId(x: x, y: y)
-        let building = vm.buildingAt(x: x, y: y)
-        let pos = Pos(x: x, y: y)
-
-        let tileLabel: String
-        if let b = building {
-            // Buildings keep using their type as the label
-            tileLabel = b.type
-        } else if let code = vm.tileCodeAt(x: x, y: y) {
-            // For terrain, pull the label from tileMeta if available
-            if let meta = vm.tileMeta[code], !meta.label.isEmpty {
-                tileLabel = meta.label.uppercased()
-            } else {
-                tileLabel = ""
-            }
-        } else {
-            tileLabel = ""
-        }
-
-        let zombiesHere = vm.zombies.filter { z in
-            z.pos.x == x && z.pos.y == y
-        }
-        // Other players on this tile (excluding me)
-        let otherPlayersHere = vm.players.filter { p in
-            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
-        }
-        let hasZombie = !zombiesHere.isEmpty
+    private func cellView(tile: GridTileViewModel) -> some View {
+        let pos = Pos(x: tile.x, y: tile.y)
 
         return GridCellView(
-            x: x,
-            y: y,
-            isMe: isMe,
-            isHighlighted: isHighlighted,
-            isTargetZombie: isTargetZombie,
-            building: building,
-            cellSize: tileSize,
-            buildingColor: vm.buildingColor(for: building),
-            tileColor: vm.tileColorAt(x: x, y: y),
-            tileLabel: tileLabel,
-            hasZombie: hasZombie,
-            zombieCount: zombiesHere.count,
-            otherPlayerCount: otherPlayersHere.count,
+            x: tile.x,
+            y: tile.y,
+            isMe: tile.isMe,
+            isHighlighted: tile.isHighlighted,
+            isTargetZombie: tile.isTargetZombie,
+            building: tile.building,
+            cellSize: tile.tileSize,
+            buildingColor: tile.buildingColor,
+            tileColor: tile.tileColor,
+            tileLabel: tile.tileLabel,
+            hasZombie: tile.hasZombie,
+            zombieCount: tile.zombieCount,
+            otherPlayerCount: tile.otherPlayerCount,
             humanCount: 0,
             itemCount: 0,
             onTileTap: { [weak vm] in
@@ -204,7 +116,7 @@ struct GridView: View {
                 vm?.handleItemTap(pos: pos)
             }
         )
-        .id(id)
+        .id(tile.id)
     }
 
     // MARK: - Zoom controls
@@ -258,9 +170,120 @@ struct GridView: View {
         "tile-\(x)-\(y)"
     }
 
-    private func handleTap(_ pos: Pos) {
-        lastTap = pos
-        vm.log.info("Tapped tile in GridView — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
-        vm.handleTileTap(pos: pos)
+    @ViewBuilder
+    private func visibleGrid(geo: GeometryProxy, centerPos: Pos) -> some View {
+        let radius = max(0, min(zoomRadius, vm.maxViewRadius))
+
+        let viewport = GridViewport(
+            gridW: vm.gridW,
+            gridH: vm.gridH,
+            center: centerPos,
+            radius: radius
+        )
+
+        let tileSize = viewport.tileSize(
+            in: geo,
+            baseCellSize: baseCellSize
+        )
+
+        ForEach(viewport.yRange, id: \.self) { y in
+            HStack(spacing: 2) {
+                ForEach(viewport.xRange, id: \.self) { x in
+                    let tile = makeTileViewModel(x: x, y: y, tileSize: tileSize, centerPos: centerPos)
+                    cellView(tile: tile)
+                }
+            }
+        }
     }
+
+    @ViewBuilder
+    private func fullGridFallback() -> some View {
+        ForEach(0 ..< vm.gridH, id: \.self) { y in
+            HStack(spacing: 2) {
+                ForEach(0 ..< vm.gridW, id: \.self) { x in
+                    let tile = makeTileViewModel(x: x, y: y, tileSize: baseCellSize, centerPos: nil)
+                    cellView(tile: tile)
+                }
+            }
+        }
+    }
+
+    private func makeTileViewModel(
+        x: Int,
+        y: Int,
+        tileSize: CGFloat,
+        centerPos: Pos?
+    ) -> GridTileViewModel {
+        let isMe: Bool
+        if let center = centerPos {
+            isMe = (center.x == x && center.y == y)
+        } else {
+            isMe = (vm.myPos?.x == x && vm.myPos?.y == y)
+        }
+
+        let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
+        let isTargetZombie =
+            vm.interactionKind == .zombie &&
+            vm.interactionPos?.x == x &&
+            vm.interactionPos?.y == y
+
+        let building = vm.buildingAt(x: x, y: y)
+
+        let tileLabel: String
+        if let b = building {
+            tileLabel = b.type
+        } else if let code = vm.tileCodeAt(x: x, y: y) {
+            if let meta = vm.tileMeta[code], !meta.label.isEmpty {
+                tileLabel = meta.label.uppercased()
+            } else {
+                tileLabel = ""
+            }
+        } else {
+            tileLabel = ""
+        }
+
+        let zombiesHere = vm.zombies.filter { z in
+            z.pos.x == x && z.pos.y == y
+        }
+
+        let otherPlayersHere = vm.players.filter { p in
+            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
+        }
+
+        let hasZombie = !zombiesHere.isEmpty
+
+        return GridTileViewModel(
+            id: tileId(x: x, y: y),
+            x: x,
+            y: y,
+            isMe: isMe,
+            isHighlighted: isHighlighted,
+            isTargetZombie: isTargetZombie,
+            building: building,
+            tileSize: tileSize,
+            buildingColor: vm.buildingColor(for: building),
+            tileColor: vm.tileColorAt(x: x, y: y),
+            tileLabel: tileLabel,
+            hasZombie: hasZombie,
+            zombieCount: zombiesHere.count,
+            otherPlayerCount: otherPlayersHere.count
+        )
+    }
+}
+
+private struct GridTileViewModel {
+    let id: String
+    let x: Int
+    let y: Int
+    let isMe: Bool
+    let isHighlighted: Bool
+    let isTargetZombie: Bool
+    let building: GameVM.Building?
+    let tileSize: CGFloat
+    let buildingColor: Color?
+    let tileColor: Color?
+    let tileLabel: String
+    let hasZombie: Bool
+    let zombieCount: Int
+    let otherPlayerCount: Int
 }

@@ -19,6 +19,7 @@ extension GameVM {
         uid = Auth.auth().currentUser?.uid ?? uid
         if uid.isEmpty {
             print("Join error: missing uid")
+            showJoinFailed(reason: "missing uid")
             return
         }
 
@@ -31,11 +32,15 @@ extension GameVM {
                 self.focusPos = pos
                 self.startMyPlayerListener()
                 print("Joined:", ["ok": 1, "x": res.x, "y": res.y])
+                showJoinSuccess(x: pos.x, y: pos.y)
             } else {
-                print("Join failed")
+                let reason = res.reason ?? "unknown"
+                print("Join failed:", reason)
+                showJoinFailed(reason: reason)
             }
         } catch {
             print("Join error:", error)
+            showJoinFailed(reason: "network error")
         }
     }
 
@@ -55,10 +60,13 @@ extension GameVM {
                     print("Move ok (no coordinates in response)")
                 }
             } else {
-                print("Move failed:", res.reason ?? "unknown")
+                let reason = res.reason ?? "unknown"
+                print("Move failed:", reason)
+                showMoveBlocked(reason: reason)
             }
         } catch {
             print("Move error:", error)
+            showMoveBlocked(reason: "network error")
         }
     }
 }

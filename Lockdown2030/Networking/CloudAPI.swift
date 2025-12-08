@@ -55,6 +55,7 @@ struct EngineJoinRes: Codable {
     let y: Int
     let hp: Int?
     let ap: Int?
+    let reason: String?
 }
 
 struct EngineMoveReq: Codable {

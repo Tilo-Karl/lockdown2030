@@ -19,12 +19,17 @@ extension GameVM {
                 body: req
             )
             if res.ok {
-                print("Attack:", ["ok": 1, "targetHp": res.targetHp ?? -1])
+                let hp = res.targetHp ?? -1
+                print("Attack:", ["ok": 1, "targetHp": hp])
+                self.pushCombat("Attack succeeded. Target HP is now \(hp).")
             } else {
-                print("Attack failed:", res.reason ?? "unknown")
+                let reason = res.reason ?? "unknown"
+                print("Attack failed:", reason)
+                self.pushCombat("Attack failed: \(reason).")
             }
         } catch {
             print("Attack error:", error)
+            self.pushCombat("Attack failed: network error.")
         }
     }
 
@@ -79,7 +84,7 @@ extension GameVM {
                     }
                 }
 
-                self.setLastEventMessage(parts.joined(separator: " "))
+                self.pushCombat(parts.joined(separator: " "))
 
             } else {
                 // Prefer backend error if reason is just "internal"
@@ -95,11 +100,11 @@ extension GameVM {
                     reasonToShow = backendReason ?? "unknown"
                 }
                 
-                self.setLastEventMessage("Attack failed: \(reasonToShow)")
+                self.pushCombat("Attack failed: \(reasonToShow)")
             }
         } catch {
             print("Attack zombie error:", error)
-            self.setLastEventMessage("Attack failed: network error")
+            self.pushCombat("Attack failed: network error")
         }
     }
 }

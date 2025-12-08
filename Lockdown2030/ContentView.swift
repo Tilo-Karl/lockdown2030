@@ -172,14 +172,27 @@ extension ContentView {
                 Spacer()
             }
 
-            // Messages area (placeholder for now)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("[System] Chat coming soon…")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            // Messages area – unified log (system / combat / radio)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(vm.messageLog) { msg in
+                            Text(renderedMessageText(msg))
+                                .font(.caption2)
+                                .foregroundStyle(messageColor(for: msg.kind))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id(msg.id)   // needed for scrollTo
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .onChange(of: vm.messageLog.count) { _ in
+                    if let lastId = vm.messageLog.last?.id {
+                        withAnimation {
+                            proxy.scrollTo(lastId, anchor: .bottom)
+                        }
+                    }
+                }
             }
 
             // Input bar (non-functional placeholder)
@@ -245,6 +258,28 @@ extension ContentView {
         case .zombie: return "Attack"
         case .human:  return "Talk"
         case .item:   return "Pick up"
+        }
+    }
+
+    private func renderedMessageText(_ msg: GameVM.GameMessage) -> String {
+        switch msg.kind {
+        case .system:
+            return "[System] \(msg.text)"
+        case .combat:
+            return "[Combat] \(msg.text)"
+        case .radio:
+            return "[Radio] \(msg.text)"
+        }
+    }
+
+    private func messageColor(for kind: GameVM.GameMessage.Kind) -> Color {
+        switch kind {
+        case .system:
+            return .secondary
+        case .combat:
+            return .red
+        case .radio:
+            return .primary
         }
     }
 }

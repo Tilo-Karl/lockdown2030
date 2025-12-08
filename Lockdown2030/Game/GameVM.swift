@@ -71,6 +71,9 @@ final class GameVM: ObservableObject {
   @Published var zombies: [Zombie] = []
   @Published var lastEventMessage: String? = nil
 
+  /// Unified message log for system/combat/radio messages shown in the Radio / Chat UI.
+  @Published var messageLog: [GameMessage] = []
+
   @Published var mapId: String = ""
 
   // MARK: - Listeners / Firestore
@@ -89,6 +92,8 @@ final class GameVM: ObservableObject {
   }
 
   func setLastEventMessage(_ message: String) {
+    // Legacy helper: update the simple string + log.
+    // New code should call pushSystem / pushCombat / pushRadio instead.
     DispatchQueue.main.async {
       self.lastEventMessage = message
       self.log.info("Event: \(message, privacy: .public)")

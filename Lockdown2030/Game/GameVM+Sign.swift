@@ -19,11 +19,15 @@ extension GameVM {
         log.info("Signed in anonymously ✅")
       } catch {
         log.error("Auth error: \(String(describing: error))")
+        pushSystem("Auth error: \(String(describing: error))")
       }
     }
 
     uid = Auth.auth().currentUser?.uid ?? ""
     log.info("UID: \(self.uid, privacy: .public)")
+    if !uid.isEmpty {
+      showSignedIn(uid: uid)
+    }
 
     // Listen to games/{gameId} (map + meta)
     startGameDocListener()
