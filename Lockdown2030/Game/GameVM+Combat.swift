@@ -20,6 +20,8 @@ extension GameVM {
 
     switch kind {
     case .zombie:
+      // Bump the hit tick so the selected zombie tile can animate (shake) in the UI.
+      zombieHitTick &+= 1
       attackZombieOnTile(pos: pos)
     case .tile, .human, .item:
       pushCombat("You can't attack that.")

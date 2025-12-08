@@ -74,6 +74,9 @@ final class GameVM: ObservableObject {
   /// Unified message log for system/combat/radio messages shown in the Radio / Chat UI.
   @Published var messageLog: [GameMessage] = []
 
+  /// Bumps whenever an attack successfully hits a zombie; used as a simple animation trigger.
+  @Published var zombieHitTick: Int = 0
+
   @Published var mapId: String = ""
 
   // MARK: - Listeners / Firestore

@@ -15,6 +15,7 @@ struct GridCellView: View {
     let isMe: Bool
     let isHighlighted: Bool
     let isTargetZombie: Bool
+    let hitTick: Int
     let building: GameVM.Building?
     let cellSize: CGFloat
     let buildingColor: Color?
@@ -29,6 +30,7 @@ struct GridCellView: View {
     let onZombieTap: (() -> Void)?
     let onHumanTap: (() -> Void)?
     let onItemTap: (() -> Void)?
+    @State private var isHitAnimating = false
 
     init(
         x: Int,
@@ -36,6 +38,7 @@ struct GridCellView: View {
         isMe: Bool,
         isHighlighted: Bool,
         isTargetZombie: Bool,
+        hitTick: Int,
         building: GameVM.Building?,
         cellSize: CGFloat,
         buildingColor: Color?,
@@ -56,6 +59,7 @@ struct GridCellView: View {
         self.isMe = isMe
         self.isHighlighted = isHighlighted
         self.isTargetZombie = isTargetZombie
+        self.hitTick = hitTick
         self.building = building
         self.cellSize = cellSize
         self.buildingColor = buildingColor
@@ -90,6 +94,13 @@ struct GridCellView: View {
         .onTapGesture {
             onTileTap?()
         }
+        .onChange(of: hitTick) { _ in
+            guard isTargetZombie else { return }
+            isHitAnimating = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                isHitAnimating = false
+            }
+        }
     }
 }
 
@@ -123,6 +134,8 @@ private extension GridCellView {
                                 .stroke(isTargetZombie ? Color.yellow.opacity(0.9) : Color.clear,
                                         lineWidth: 2)
                         )
+                        .scaleEffect(isTargetZombie && isHitAnimating ? 1.15 : 1.0)
+                        .animation(.spring(response: 0.18, dampingFraction: 0.35), value: isHitAnimating)
                         .onTapGesture {
                             onZombieTap?()
                         }

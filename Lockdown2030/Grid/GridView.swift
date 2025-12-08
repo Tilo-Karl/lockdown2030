@@ -91,6 +91,7 @@ struct GridView: View {
             isMe: tile.isMe,
             isHighlighted: tile.isHighlighted,
             isTargetZombie: tile.isTargetZombie,
+            hitTick: tile.hitTick,
             building: tile.building,
             cellSize: tile.tileSize,
             buildingColor: tile.buildingColor,
@@ -252,6 +253,8 @@ struct GridView: View {
 
         let hasZombie = !zombiesHere.isEmpty
 
+        let hitTick = vm.zombieHitTick
+
         return GridTileViewModel(
             id: tileId(x: x, y: y),
             x: x,
@@ -266,7 +269,8 @@ struct GridView: View {
             tileLabel: tileLabel,
             hasZombie: hasZombie,
             zombieCount: zombiesHere.count,
-            otherPlayerCount: otherPlayersHere.count
+            otherPlayerCount: otherPlayersHere.count,
+            hitTick: hitTick
         )
     }
 }
@@ -286,4 +290,5 @@ private struct GridTileViewModel {
     let hasZombie: Bool
     let zombieCount: Int
     let otherPlayerCount: Int
+    let hitTick: Int
 }
