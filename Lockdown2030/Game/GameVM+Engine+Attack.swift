@@ -21,15 +21,17 @@ extension GameVM {
             if res.ok {
                 let hp = res.targetHp ?? -1
                 print("Attack:", ["ok": 1, "targetHp": hp])
+                // Keep this simple success line hard-coded for now.
                 self.pushCombat("Attack succeeded. Target HP is now \(hp).")
             } else {
                 let reason = res.reason ?? "unknown"
                 print("Attack failed:", reason)
-                self.pushCombat("Attack failed: \(reason).")
+                let msg = String(format: GameStrings.combatAttackFailedReason, reason)
+                self.pushCombat(msg)
             }
         } catch {
             print("Attack error:", error)
-            self.pushCombat("Attack failed: network error.")
+            self.pushCombat(GameStrings.combatAttackFailedNetwork)
         }
     }
 
@@ -69,19 +71,43 @@ extension GameVM {
                 ])
 
                 var parts: [String] = []
+                var zombieDied = false
 
                 if let zHp = zHp {
-                    parts.append("You hit the zombie for \(damage) HP (now \(zHp) HP).")
+                    let hitLine = String(
+                        format: GameStrings.combatHitWithRemainingHp,
+                        damage,
+                        zHp
+                    )
+                    parts.append(hitLine)
+                    if zHp <= 0 {
+                        zombieDied = true
+                    }
                 } else {
-                    parts.append("You swing at the zombie.")
+                    parts.append(GameStrings.combatSwingAtZombie)
                 }
 
                 if zHit {
                     if let pHp = pHp {
-                        parts.append("The zombie hits you back for \(zDmg) HP (you now at \(pHp) HP).")
+                        parts.append(
+                            String(
+                                format: GameStrings.combatZombieHitsYouWithRemainingHp,
+                                zDmg,
+                                pHp
+                            )
+                        )
                     } else {
-                        parts.append("The zombie hits you back for \(zDmg) HP.")
+                        parts.append(
+                            String(
+                                format: GameStrings.combatZombieHitsYou,
+                                zDmg
+                            )
+                        )
                     }
+                }
+
+                if zombieDied {
+                    parts.append(GameStrings.combatZombieDies)
                 }
 
                 self.pushCombat(parts.joined(separator: " "))
@@ -100,11 +126,12 @@ extension GameVM {
                     reasonToShow = backendReason ?? "unknown"
                 }
                 
-                self.pushCombat("Attack failed: \(reasonToShow)")
+                let msg = String(format: GameStrings.combatAttackFailedReason, reasonToShow)
+                self.pushCombat(msg)
             }
         } catch {
             print("Attack zombie error:", error)
-            self.pushCombat("Attack failed: network error")
+            self.pushCombat(GameStrings.combatAttackFailedNetwork)
         }
     }
 }

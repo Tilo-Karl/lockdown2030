@@ -14,7 +14,7 @@ extension GameVM {
   @MainActor
   func attackSelected() {
     guard let kind = interactionKind, let pos = interactionPos else {
-      pushCombat("No target selected.")
+      pushCombat(GameStrings.combatNoTargetSelected)
       return
     }
 
@@ -24,7 +24,7 @@ extension GameVM {
       zombieHitTick &+= 1
       attackZombieOnTile(pos: pos)
     case .tile, .human, .item:
-      pushCombat("You can't attack that.")
+      pushCombat(GameStrings.combatCantAttackThat)
     }
   }
 
@@ -33,13 +33,13 @@ extension GameVM {
   private func attackZombieOnTile(pos: Pos) {
     // Must know where we are.
     guard let myPos = myPos else {
-      pushCombat("You don't know where you are.")
+      pushCombat(GameStrings.combatDontKnowWhereYouAre)
       return
     }
 
     // For now, only allow attacks on your own tile.
     guard myPos.x == pos.x && myPos.y == pos.y else {
-      pushCombat("The zombie is too far away to attack.")
+      pushCombat(GameStrings.combatZombieTooFar)
       return
     }
 
@@ -49,7 +49,7 @@ extension GameVM {
     }
 
     guard let target = zombiesHere.first else {
-      pushCombat("There is no zombie here.")
+      pushCombat(GameStrings.combatNoZombieHere)
       return
     }
 

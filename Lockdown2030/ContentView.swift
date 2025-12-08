@@ -138,6 +138,26 @@ extension ContentView {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
+                    // Zombie HP line + bar
+                    if kind == .zombie,
+                       let hp = vm.interactionZombieHp,
+                       let ratio = vm.interactionZombieHpRatio {
+                        VStack(spacing: 2) {
+                            HStack {
+                                Text("HP")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Text("\(hp)/\(vm.interactionZombieMaxHp)")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            ProgressView(value: ratio)
+                                .progressViewStyle(.linear)
+                        }
+                    }
+
                     HStack {
                         Spacer()
                         Button(interactionButtonLabel(for: kind)) {

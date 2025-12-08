@@ -136,3 +136,39 @@ final class GameVM: ObservableObject {
     return tileMeta[code]
   }
 }
+
+// MARK: - Interaction helpers (current zombie)
+
+extension GameVM {
+
+  /// The zombie currently selected via interaction (if any).
+  var interactionZombie: Zombie? {
+    guard interactionKind == .zombie,
+          let pos = interactionPos
+    else { return nil }
+
+    // Reuse the existing `zombies` array – no new variables.
+    return zombies.first { z in
+      z.alive &&
+      z.pos.x == pos.x &&
+      z.pos.y == pos.y
+    }
+  }
+
+  /// Current HP of the selected zombie, if any.
+  var interactionZombieHp: Int? {
+    interactionZombie?.hp
+  }
+
+  /// Max HP we assume for zombies (for now a simple constant).
+  var interactionZombieMaxHp: Int {
+    50 // TODO: keep in sync with engine starting HP
+  }
+
+  /// 0.0–1.0 ratio for HP bar.
+  var interactionZombieHpRatio: Double? {
+    guard let hp = interactionZombieHp else { return nil }
+    let maxHp = Double(interactionZombieMaxHp)
+    return max(0.0, min(1.0, Double(hp) / maxHp))
+  }
+}
