@@ -26,7 +26,7 @@ struct ContentView: View {
 
             interactionSection
 
-            chatSection
+            eventLogSection
 
             // Attack row
             //attackSection
@@ -152,19 +152,23 @@ extension ContentView {
                     if kind == .zombie,
                        let hp = vm.interactionZombieHp,
                        let ratio = vm.interactionZombieHpRatio {
+                        let hpColor = vm.interactionZombieHpColor ?? .green
+
                         VStack(spacing: 2) {
                             HStack {
                                 Text("HP")
                                     .font(.caption2)
                                     .fontWeight(.semibold)
+                                    .foregroundStyle(hpColor)
                                 Spacer()
                                 Text("\(hp)/\(vm.interactionZombieMaxHp)")
                                     .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(hpColor)
                             }
 
                             ProgressView(value: ratio)
                                 .progressViewStyle(.linear)
+                                .tint(hpColor)
                         }
                     }
 
@@ -192,11 +196,11 @@ extension ContentView {
         }
     }
 
-    fileprivate var chatSection: some View {
+    fileprivate var eventLogSection: some View {
         VStack(spacing: 4) {
             // Title / label
             HStack {
-                Text("Radio / Chat")
+                Text("🛈 Event Log")
                     .font(.caption)
                     .fontWeight(.semibold)
                 Spacer()
@@ -294,11 +298,11 @@ extension ContentView {
     private func renderedMessageText(_ msg: GameVM.GameMessage) -> String {
         switch msg.kind {
         case .system:
-            return "[System] \(msg.text)"
+            return "🛈 \(msg.text)"
         case .combat:
-            return "[Combat] \(msg.text)"
+            return "⚔️ \(msg.text)"
         case .radio:
-            return "[Radio] \(msg.text)"
+            return "📡 \(msg.text)"
         }
     }
 

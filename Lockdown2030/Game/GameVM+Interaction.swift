@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 extension GameVM {
 
@@ -60,6 +61,24 @@ extension GameVM {
         guard let hp = interactionZombieHp else { return nil }
         let maxHp = Double(interactionZombieMaxHp)
         return max(0.0, min(1.0, Double(hp) / maxHp))
+    }
+
+    /// Color to use for the zombie HP bar, derived from HP ratio.
+    /// - Green: > 60%
+    /// - Yellow: 30–60%
+    /// - Red: < 30%
+    var interactionZombieHpColor: Color {
+        guard let ratio = interactionZombieHpRatio else {
+            return .green
+        }
+
+        if ratio > 0.6 {
+            return .green
+        } else if ratio > 0.3 {
+            return .yellow
+        } else {
+            return .red
+        }
     }
 
     // MARK: - Sync after data changes
