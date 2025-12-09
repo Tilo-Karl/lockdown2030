@@ -123,14 +123,24 @@ extension ContentView {
         Group {
             if let pos = vm.interactionPos, let kind = vm.interactionKind {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+                    HStack(spacing: 8) {
                         Text(interactionTitle(for: kind))
                             .font(.caption)
                             .fontWeight(.semibold)
+
                         Spacer()
+
                         Text("(\(pos.x), \(pos.y))")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+
+                        Button(action: {
+                            vm.clearInteraction()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.borderless)
                     }
 
                     // Simple description placeholder for now.

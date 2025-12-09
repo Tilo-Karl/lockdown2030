@@ -98,6 +98,8 @@ struct GridView: View {
             tileColor: tile.tileColor,
             tileLabel: tile.tileLabel,
             hasZombie: tile.hasZombie,
+            zombieIds: tile.zombieIds,
+            selectedZombieId: tile.selectedZombieIdOnTile,
             zombieCount: tile.zombieCount,
             otherPlayerCount: tile.otherPlayerCount,
             humanCount: 0,
@@ -107,8 +109,9 @@ struct GridView: View {
                 vm.log.info("Tapped tile in GridView — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
                 vm.handleTileTap(pos: pos)
             },
-            onZombieTap: { [weak vm] in
-                vm?.handleZombieTap(pos: pos)
+            onZombieTap: { [weak vm] emojiIndex in
+                guard let vm = vm else { return }
+                vm.handleZombieTapOnTile(pos: pos, index: emojiIndex)
             },
             onHumanTap: { [weak vm] in
                 vm?.handleHumanTap(pos: pos)
@@ -223,10 +226,14 @@ struct GridView: View {
         }
 
         let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
-        let isTargetZombie =
-            vm.interactionKind == .zombie &&
-            vm.interactionPos?.x == x &&
-            vm.interactionPos?.y == y
+
+        let zombiesHere = vm.zombies.filter { z in
+            z.pos.x == x && z.pos.y == y
+        }
+        let zombieIdsHere = zombiesHere.map { $0.id }
+
+        let selectedId = vm.selectedZombieId
+        let isTargetZombie = selectedId != nil && zombieIdsHere.contains(where: { $0 == selectedId })
 
         let building = vm.buildingAt(x: x, y: y)
 
@@ -241,10 +248,6 @@ struct GridView: View {
             }
         } else {
             tileLabel = ""
-        }
-
-        let zombiesHere = vm.zombies.filter { z in
-            z.pos.x == x && z.pos.y == y
         }
 
         let otherPlayersHere = vm.players.filter { p in
@@ -268,9 +271,11 @@ struct GridView: View {
             tileColor: vm.tileColorAt(x: x, y: y),
             tileLabel: tileLabel,
             hasZombie: hasZombie,
+            zombieIds: zombieIdsHere,
             zombieCount: zombiesHere.count,
             otherPlayerCount: otherPlayersHere.count,
-            hitTick: hitTick
+            hitTick: hitTick,
+            selectedZombieIdOnTile: selectedId
         )
     }
 }
@@ -288,7 +293,9 @@ private struct GridTileViewModel {
     let tileColor: Color?
     let tileLabel: String
     let hasZombie: Bool
+    let zombieIds: [String]
     let zombieCount: Int
     let otherPlayerCount: Int
     let hitTick: Int
+    let selectedZombieIdOnTile: String?
 }

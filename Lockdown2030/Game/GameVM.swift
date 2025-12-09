@@ -77,6 +77,9 @@ final class GameVM: ObservableObject {
   /// Bumps whenever an attack successfully hits a zombie; used as a simple animation trigger.
   @Published var zombieHitTick: Int = 0
 
+  /// Currently selected zombie (by id), used for per-zombie selection & UI.
+  @Published var selectedZombieId: String? = nil
+
   @Published var mapId: String = ""
 
   // MARK: - Listeners / Firestore
@@ -130,45 +133,15 @@ final class GameVM: ObservableObject {
     return TileSnapshot(pos: pos, tileCode: tileCode, building: b, zombies: zs)
   }
 
+  /// Currently selected zombie object, if any.
+  var selectedZombie: Zombie? {
+    guard let id = selectedZombieId else { return nil }
+    return zombies.first(where: { $0.id == id })
+  }
+
   /// Convenience: meta for the tile at a given position, if available.
   func tileMeta(at pos: Pos) -> TileMeta? {
     guard let code = tileCodeAt(x: pos.x, y: pos.y) else { return nil }
     return tileMeta[code]
-  }
-}
-
-// MARK: - Interaction helpers (current zombie)
-
-extension GameVM {
-
-  /// The zombie currently selected via interaction (if any).
-  var interactionZombie: Zombie? {
-    guard interactionKind == .zombie,
-          let pos = interactionPos
-    else { return nil }
-
-    // Reuse the existing `zombies` array – no new variables.
-    return zombies.first { z in
-      z.alive &&
-      z.pos.x == pos.x &&
-      z.pos.y == pos.y
-    }
-  }
-
-  /// Current HP of the selected zombie, if any.
-  var interactionZombieHp: Int? {
-    interactionZombie?.hp
-  }
-
-  /// Max HP we assume for zombies (for now a simple constant).
-  var interactionZombieMaxHp: Int {
-    50 // TODO: keep in sync with engine starting HP
-  }
-
-  /// 0.0–1.0 ratio for HP bar.
-  var interactionZombieHpRatio: Double? {
-    guard let hp = interactionZombieHp else { return nil }
-    let maxHp = Double(interactionZombieMaxHp)
-    return max(0.0, min(1.0, Double(hp) / maxHp))
   }
 }

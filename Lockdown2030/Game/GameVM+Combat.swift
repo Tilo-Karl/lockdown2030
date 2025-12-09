@@ -43,12 +43,35 @@ extension GameVM {
       return
     }
 
-    // Pick the first alive zombie on this tile.
-    let zombiesHere = zombies.filter { z in
-      z.alive && z.pos.x == pos.x && z.pos.y == pos.y
+    // Try to use a specifically selected zombie first, if we have one.
+    let target: Zombie?
+    if let selectedId = selectedZombieId {
+        if let z = zombies.first(where: { $0.id == selectedId && $0.alive }) {
+            // Ensure it is still on this tile.
+            if z.pos.x == pos.x && z.pos.y == pos.y {
+                target = z
+            } else {
+                target = nil
+            }
+        } else {
+            target = nil
+        }
+    } else {
+        target = nil
     }
 
-    guard let target = zombiesHere.first else {
+    // If no specific zombie is selected or it is no longer valid, fall back to first alive on this tile.
+    let finalTarget: Zombie?
+    if let t = target {
+        finalTarget = t
+    } else {
+        let zombiesHere = zombies.filter { z in
+            z.alive && z.pos.x == pos.x && z.pos.y == pos.y
+        }
+        finalTarget = zombiesHere.first
+    }
+
+    guard let target = finalTarget else {
       pushCombat(GameStrings.combatNoZombieHere)
       return
     }

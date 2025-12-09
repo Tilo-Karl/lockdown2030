@@ -197,6 +197,8 @@ extension GameVM {
 
             DispatchQueue.main.async {
                 self.zombies = mapped
+                // Keep the current interaction in sync with updated zombies (clear selection if it moved/died)
+                self.refreshInteractionAfterZombiesUpdate()
             }
         }
     }

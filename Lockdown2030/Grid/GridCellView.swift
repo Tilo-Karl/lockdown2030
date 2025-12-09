@@ -22,12 +22,14 @@ struct GridCellView: View {
     let tileColor: Color?
     let tileLabel: String
     let hasZombie: Bool
+    let zombieIds: [String]
+    let selectedZombieId: String?
     var zombieCount: Int
     var otherPlayerCount: Int
     var humanCount: Int
     var itemCount: Int
     let onTileTap: (() -> Void)?
-    let onZombieTap: (() -> Void)?
+    let onZombieTap: ((Int) -> Void)?
     let onHumanTap: (() -> Void)?
     let onItemTap: (() -> Void)?
     @State private var isHitAnimating = false
@@ -45,12 +47,14 @@ struct GridCellView: View {
         tileColor: Color?,
         tileLabel: String,
         hasZombie: Bool,
+        zombieIds: [String] = [],
+        selectedZombieId: String? = nil,
         zombieCount: Int = 0,
         otherPlayerCount: Int = 0,
         humanCount: Int = 0,
         itemCount: Int = 0,
         onTileTap: (() -> Void)? = nil,
-        onZombieTap: (() -> Void)? = nil,
+        onZombieTap: ((Int) -> Void)? = nil,
         onHumanTap: (() -> Void)? = nil,
         onItemTap: (() -> Void)? = nil
     ) {
@@ -66,6 +70,8 @@ struct GridCellView: View {
         self.tileColor = tileColor
         self.tileLabel = tileLabel
         self.hasZombie = hasZombie
+        self.zombieIds = zombieIds
+        self.selectedZombieId = selectedZombieId
         self.zombieCount = zombieCount
         self.otherPlayerCount = otherPlayerCount
         self.humanCount = humanCount
@@ -125,26 +131,27 @@ private extension GridCellView {
         if effectiveZombieCount > 0 {
             HStack(spacing: 1) {
                 let shown = min(effectiveZombieCount, 3)
-                ForEach(0..<shown, id: \.self) { _ in
+                ForEach(0..<shown, id: \.self) { index in
+                    let isSelectedEmoji = (index < zombieIds.count && selectedZombieId == zombieIds[index])
                     Text("🧟")
                         .font(.system(size: min(cellSize * 0.6, 28)))
                         .padding(2)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(isTargetZombie ? Color.yellow.opacity(0.9) : Color.clear,
+                                .stroke(isSelectedEmoji ? Color.yellow.opacity(0.9) : Color.clear,
                                         lineWidth: 2)
                         )
-                        .scaleEffect(isTargetZombie && isHitAnimating ? 1.15 : 1.0)
+                        .scaleEffect(isSelectedEmoji && isHitAnimating ? 1.15 : 1.0)
                         .animation(.spring(response: 0.18, dampingFraction: 0.35), value: isHitAnimating)
                         .onTapGesture {
-                            onZombieTap?()
+                            onZombieTap?(index)
                         }
                 }
                 if effectiveZombieCount > shown {
                     Text("+\(effectiveZombieCount - shown)")
                         .font(.system(size: min(cellSize * 0.45, 16)))
                         .onTapGesture {
-                            onZombieTap?()
+                            onZombieTap?(0)
                         }
                 }
                 Spacer(minLength: 0)
