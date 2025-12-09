@@ -7,6 +7,9 @@
 
 @MainActor
 extension GameVM {
+
+    // MARK: - Tile taps
+
     func handleTileTap(pos: Pos) {
         log.info("Tapped tile in handleTileTap — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
 
@@ -17,10 +20,7 @@ extension GameVM {
         if pos.x == current.x && pos.y == current.y {
 
             // If this tile is already selected as a tile interaction, tapping again clears it.
-            if let selectedPos = interactionPos,
-               selectedPos.x == pos.x,
-               selectedPos.y == pos.y,
-               interactionKind == .tile {
+            if isSameTile(interactionPos, pos) && interactionKind == .tile {
                 clearInteraction()
                 log.info("Tapped own tile again — clearing interaction.")
             } else {
@@ -58,16 +58,21 @@ extension GameVM {
         }
     }
 
+    // MARK: - Zombie taps
+
     func handleZombieTapOnTile(pos: Pos, index: Int) {
         log.info("Tapped zombie emoji at (\(pos.x, privacy: .public), \(pos.y, privacy: .public)) index \(index, privacy: .public)")
+
         let zombiesHere = zombies.filter { z in
             z.alive && z.pos.x == pos.x && z.pos.y == pos.y
         }
+
         guard !zombiesHere.isEmpty else {
             clearInteraction()
             log.info("Zombie tap on tile — but no alive zombie found here.")
             return
         }
+
         let clampedIndex = max(0, min(index, zombiesHere.count - 1))
         let target = zombiesHere[clampedIndex]
         handleZombieTap(zombieId: target.id)
@@ -81,24 +86,17 @@ extension GameVM {
             return
         }
 
-        guard let current = myPos else { return }
-
-        let dx = target.pos.x - current.x
-        let dy = target.pos.y - current.y
-        let distance = abs(dx) + abs(dy)
+        guard let distance = distanceFromMe(to: target.pos) else { return }
 
         if distance == 0 {
             // Same tile – toggle selection if already selected.
             if selectedZombieId == zombieId,
                interactionKind == .zombie,
-               interactionPos?.x == target.pos.x,
-               interactionPos?.y == target.pos.y {
+               isSameTile(interactionPos, target.pos) {
                 clearInteraction()
                 log.info("Zombie tap by id on own tile again — clearing zombie interaction.")
             } else {
-                interactionPos = target.pos
-                interactionKind = .zombie
-                selectedZombieId = zombieId
+                selectZombie(target)
                 log.info("Zombie tap by id on own tile — selecting zombie id=\(zombieId, privacy: .public).")
             }
         } else {
@@ -108,20 +106,14 @@ extension GameVM {
         }
     }
 
+    /// Fallback: tile-level zombie tap (no specific emoji index).
     func handleZombieTap(pos: Pos) {
         log.info("Tapped zombie at (\(pos.x, privacy: .public), \(pos.y, privacy: .public))")
-        guard let current = myPos else { return }
-
-        let dx = pos.x - current.x
-        let dy = pos.y - current.y
-        let distance = abs(dx) + abs(dy)
+        guard let distance = distanceFromMe(to: pos) else { return }
 
         if distance == 0 {
             // Same tile – either clear or select zombie interaction on this tile.
-            if let selectedPos = interactionPos,
-               selectedPos.x == pos.x,
-               selectedPos.y == pos.y,
-               interactionKind == .zombie {
+            if isSameTile(interactionPos, pos), interactionKind == .zombie {
                 clearInteraction()
                 log.info("Zombie tap on own tile again — clearing zombie interaction.")
             } else {
@@ -137,9 +129,7 @@ extension GameVM {
                     return
                 }
 
-                interactionPos = pos
-                interactionKind = .zombie
-                selectedZombieId = target.id
+                selectZombie(target, at: pos)
                 log.info("Zombie tap on own tile — selecting zombie id=\(target.id, privacy: .public).")
             }
         } else {
@@ -149,25 +139,85 @@ extension GameVM {
         }
     }
 
-    func handleHumanTap(pos: Pos) {
-        log.info("Tapped human at (\(pos.x, privacy: .public), \(pos.y, privacy: .public))")
-        guard let current = myPos else { return }
+    // MARK: - Human taps (players / future NPCs)
 
-        let dx = pos.x - current.x
-        let dy = pos.y - current.y
-        let distance = abs(dx) + abs(dy)
+    /// Tap on a specific human emoji in the grid (index within that tile).
+    func handleHumanTapOnTile(pos: Pos, index: Int) {
+        log.info("Tapped human emoji at (\(pos.x, privacy: .public), \(pos.y, privacy: .public)) index \(index, privacy: .public)")
+
+        let humansHere = players.filter { p in
+            p.userId != uid && p.pos?.x == pos.x && p.pos?.y == pos.y
+        }
+
+        guard !humansHere.isEmpty else {
+            clearInteraction()
+            log.info("Human tap on tile — but no human found here.")
+            return
+        }
+
+        let clampedIndex = max(0, min(index, humansHere.count - 1))
+        let target = humansHere[clampedIndex]
+        handleHumanTap(humanId: target.userId)
+    }
+
+    /// Core handler: select / toggle a concrete human by id.
+    func handleHumanTap(humanId: String) {
+        guard let target = players.first(where: { $0.userId == humanId }),
+              let targetPos = target.pos else {
+            clearInteraction()
+            log.info("Human tap by id — but no human found for id=\(humanId, privacy: .public)")
+            return
+        }
+
+        guard let distance = distanceFromMe(to: targetPos) else { return }
 
         if distance == 0 {
-            if let selectedPos = interactionPos,
-               selectedPos.x == pos.x,
-               selectedPos.y == pos.y,
+            // Same tile – toggle selection if already selected.
+            if selectedHumanId == humanId,
+               interactionKind == .human,
+               isSameTile(interactionPos, targetPos) {
+                clearInteraction()
+                log.info("Human tap by id on own tile again — clearing human interaction.")
+            } else {
+                selectHuman(target, at: targetPos)
+                log.info("Human tap by id on own tile — selecting human id=\(humanId, privacy: .public).")
+            }
+        } else {
+            clearInteraction()
+            log.info("Human tap by id too far away — would show 'too far away' message.")
+        }
+    }
+
+    /// Fallback: tap on the human row without per-emoji index.
+    func handleHumanTap(pos: Pos) {
+        log.info("Tapped human at (\(pos.x, privacy: .public), \(pos.y, privacy: .public))")
+        guard let distance = distanceFromMe(to: pos) else { return }
+
+        if distance == 0 {
+            // All humans on this tile except me.
+            let humansHere = players.filter { p in
+                p.userId != uid && p.pos?.x == pos.x && p.pos?.y == pos.y
+            }
+
+            guard !humansHere.isEmpty else {
+                clearInteraction()
+                log.info("Human tap on own tile — but no human found here.")
+                return
+            }
+
+            // If a human on this tile is already selected, second tap clears.
+            if let selectedId = selectedHumanId,
+               let selected = players.first(where: { $0.userId == selectedId }),
+               let selPos = selected.pos,
+               isSameTile(selPos, pos),
                interactionKind == .human {
                 clearInteraction()
                 log.info("Human tap on own tile again — clearing human interaction.")
             } else {
-                interactionPos = pos
-                interactionKind = .human
-                log.info("Human tap on own tile — opening human interaction.")
+                // Otherwise select the first human on this tile.
+                let target = humansHere.first!
+                selectHuman(target, at: pos)
+                log.info("Human tap on own tile — selecting human id=\(target.userId, privacy: .public).")
             }
         } else {
             clearInteraction()
@@ -175,19 +225,14 @@ extension GameVM {
         }
     }
 
+    // MARK: - Item taps
+
     func handleItemTap(pos: Pos) {
         log.info("Tapped item at (\(pos.x, privacy: .public), \(pos.y, privacy: .public))")
-        guard let current = myPos else { return }
-
-        let dx = pos.x - current.x
-        let dy = pos.y - current.y
-        let distance = abs(dx) + abs(dy)
+        guard let distance = distanceFromMe(to: pos) else { return }
 
         if distance == 0 {
-            if let selectedPos = interactionPos,
-               selectedPos.x == pos.x,
-               selectedPos.y == pos.y,
-               interactionKind == .item {
+            if isSameTile(interactionPos, pos), interactionKind == .item {
                 clearInteraction()
                 log.info("Item tap on own tile again — clearing item interaction.")
             } else {
@@ -199,5 +244,45 @@ extension GameVM {
             clearInteraction()
             log.info("Item tap too far away — would show 'too far away to pick up' message.")
         }
+    }
+
+    // MARK: - Private helpers
+
+    /// Manhattan distance from the player to a target position.
+    private func distanceFromMe(to pos: Pos) -> Int? {
+        guard let current = myPos else { return nil }
+        return manhattanDistance(from: current, to: pos)
+    }
+
+    /// Simple manhattan distance between two positions.
+    private func manhattanDistance(from a: Pos, to b: Pos) -> Int {
+        abs(a.x - b.x) + abs(a.y - b.y)
+    }
+
+    /// Compare two positions for "same tile".
+    private func isSameTile(_ lhs: Pos?, _ rhs: Pos?) -> Bool {
+        guard let l = lhs, let r = rhs else { return false }
+        return l.x == r.x && l.y == r.y
+    }
+
+    /// Compare an optional tile with a concrete position.
+    private func isSameTile(_ lhs: Pos?, _ rhs: Pos) -> Bool {
+        guard let l = lhs else { return false }
+        return l.x == rhs.x && l.y == rhs.y
+    }
+
+    /// Select a zombie and wire up interaction state.
+    private func selectZombie(_ zombie: Zombie, at pos: Pos? = nil) {
+        let targetPos = pos ?? zombie.pos
+        interactionPos = targetPos
+        interactionKind = .zombie
+        selectedZombieId = zombie.id
+    }
+
+    /// Select a human (player / future NPC) and wire up interaction state.
+    private func selectHuman(_ human: PlayerDoc, at pos: Pos) {
+        interactionPos = pos
+        interactionKind = .human
+        selectedHumanId = human.userId
     }
 }

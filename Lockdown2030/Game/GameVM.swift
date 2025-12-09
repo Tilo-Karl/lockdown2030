@@ -80,6 +80,9 @@ final class GameVM: ObservableObject {
   /// Currently selected zombie (by id), used for per-zombie selection & UI.
   @Published var selectedZombieId: String? = nil
 
+  /// Currently selected human (by id), used for per-human selection & UI.
+  @Published var selectedHumanId: String? = nil
+
   @Published var mapId: String = ""
 
   // MARK: - Listeners / Firestore

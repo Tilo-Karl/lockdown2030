@@ -14,6 +14,7 @@ struct GridCellView: View {
     let y: Int
     let isMe: Bool
     let isHighlighted: Bool
+    /// Whether *any* selected zombie is on this tile (tile-level info from GridView).
     let isTargetZombie: Bool
     let hitTick: Int
     let building: GameVM.Building?
@@ -22,15 +23,25 @@ struct GridCellView: View {
     let tileColor: Color?
     let tileLabel: String
     let hasZombie: Bool
+    /// Concrete zombie ids on this tile, ordered to match the emoji row.
     let zombieIds: [String]
+    /// Currently selected zombie id (if any), used to highlight a single emoji.
     let selectedZombieId: String?
+
+    /// Concrete human ids (players/NPCs) on this tile.
+    let humanIds: [String]
+    /// Currently selected human id (if any).
+    let selectedHumanId: String?
+
     var zombieCount: Int
     var otherPlayerCount: Int
     var humanCount: Int
     var itemCount: Int
     let onTileTap: (() -> Void)?
+    /// Called with the tapped zombie emoji index (0..shown-1).
     let onZombieTap: ((Int) -> Void)?
-    let onHumanTap: (() -> Void)?
+    /// Called with the tapped human id.
+    let onHumanTap: ((String) -> Void)?
     let onItemTap: (() -> Void)?
     @State private var isHitAnimating = false
 
@@ -49,13 +60,15 @@ struct GridCellView: View {
         hasZombie: Bool,
         zombieIds: [String] = [],
         selectedZombieId: String? = nil,
+        humanIds: [String] = [],
+        selectedHumanId: String? = nil,
         zombieCount: Int = 0,
         otherPlayerCount: Int = 0,
         humanCount: Int = 0,
         itemCount: Int = 0,
         onTileTap: (() -> Void)? = nil,
         onZombieTap: ((Int) -> Void)? = nil,
-        onHumanTap: (() -> Void)? = nil,
+        onHumanTap: ((String) -> Void)? = nil,
         onItemTap: (() -> Void)? = nil
     ) {
         self.x = x
@@ -72,6 +85,8 @@ struct GridCellView: View {
         self.hasZombie = hasZombie
         self.zombieIds = zombieIds
         self.selectedZombieId = selectedZombieId
+        self.humanIds = humanIds
+        self.selectedHumanId = selectedHumanId
         self.zombieCount = zombieCount
         self.otherPlayerCount = otherPlayerCount
         self.humanCount = humanCount
@@ -101,6 +116,7 @@ struct GridCellView: View {
             onTileTap?()
         }
         .onChange(of: hitTick) { _ in
+            // Only animate if this tile currently contains the selected zombie.
             guard isTargetZombie else { return }
             isHitAnimating = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
@@ -131,15 +147,19 @@ private extension GridCellView {
         if effectiveZombieCount > 0 {
             HStack(spacing: 1) {
                 let shown = min(effectiveZombieCount, 3)
+
                 ForEach(0..<shown, id: \.self) { index in
                     let isSelectedEmoji = (index < zombieIds.count && selectedZombieId == zombieIds[index])
+
                     Text("🧟")
                         .font(.system(size: min(cellSize * 0.6, 28)))
                         .padding(2)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(isSelectedEmoji ? Color.yellow.opacity(0.9) : Color.clear,
-                                        lineWidth: 2)
+                                .stroke(
+                                    isSelectedEmoji ? Color.yellow.opacity(0.9) : Color.clear,
+                                    lineWidth: 2
+                                )
                         )
                         .scaleEffect(isSelectedEmoji && isHitAnimating ? 1.15 : 1.0)
                         .animation(.spring(response: 0.18, dampingFraction: 0.35), value: isHitAnimating)
@@ -147,6 +167,7 @@ private extension GridCellView {
                             onZombieTap?(index)
                         }
                 }
+
                 if effectiveZombieCount > shown {
                     Text("+\(effectiveZombieCount - shown)")
                         .font(.system(size: min(cellSize * 0.45, 16)))
@@ -154,6 +175,7 @@ private extension GridCellView {
                             onZombieTap?(0)
                         }
                 }
+
                 Spacer(minLength: 0)
             }
         }
@@ -161,14 +183,41 @@ private extension GridCellView {
 
     @ViewBuilder
     var humanRow: some View {
-        let totalHumans = otherPlayerCount + humanCount
+        let totalHumans = humanIds.count
         if totalHumans > 0 {
-            HStack(spacing: 2) {
-                Text("🙂\(totalHumans)")
-                    .font(.system(size: min(cellSize * 0.3, 12)))
-                    .onTapGesture {
-                        onHumanTap?()
-                    }
+            HStack(spacing: 1) {
+                let shown = min(totalHumans, 3)
+
+                ForEach(0..<shown, id: \.self) { index in
+                    let isSelected = (index < humanIds.count && selectedHumanId == humanIds[index])
+
+                    Text("🙂")
+                        .font(.system(size: min(cellSize * 0.3, 18)))
+                        .padding(2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(
+                                    isSelected ? Color.yellow.opacity(0.9) : Color.clear,
+                                    lineWidth: 2
+                                )
+                        )
+                        .onTapGesture {
+                            if index < humanIds.count {
+                                onHumanTap?(humanIds[index])
+                            }
+                        }
+                }
+
+                if totalHumans > shown {
+                    Text("+\(totalHumans - shown)")
+                        .font(.system(size: min(cellSize * 0.3, 12)))
+                        .onTapGesture {
+                            if let first = humanIds.first {
+                                onHumanTap?(first)
+                            }
+                        }
+                }
+
                 Spacer(minLength: 0)
             }
         }

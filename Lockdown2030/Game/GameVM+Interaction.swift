@@ -18,6 +18,7 @@ extension GameVM {
         interactionPos = nil
         interactionKind = nil
         selectedZombieId = nil
+        selectedHumanId = nil
     }
 
     // MARK: - Current zombie helpers

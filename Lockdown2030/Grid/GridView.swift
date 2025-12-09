@@ -100,9 +100,11 @@ struct GridView: View {
             hasZombie: tile.hasZombie,
             zombieIds: tile.zombieIds,
             selectedZombieId: tile.selectedZombieIdOnTile,
+            humanIds: tile.humanIds,
+            selectedHumanId: tile.selectedHumanIdOnTile,
             zombieCount: tile.zombieCount,
             otherPlayerCount: tile.otherPlayerCount,
-            humanCount: 0,
+            humanCount: tile.humanCount,
             itemCount: 0,
             onTileTap: { [weak vm] in
                 guard let vm = vm else { return }
@@ -113,8 +115,8 @@ struct GridView: View {
                 guard let vm = vm else { return }
                 vm.handleZombieTapOnTile(pos: pos, index: emojiIndex)
             },
-            onHumanTap: { [weak vm] in
-                vm?.handleHumanTap(pos: pos)
+            onHumanTap: { [weak vm] humanId in
+                vm?.handleHumanTap(humanId: humanId)
             },
             onItemTap: { [weak vm] in
                 vm?.handleItemTap(pos: pos)
@@ -232,8 +234,8 @@ struct GridView: View {
         }
         let zombieIdsHere = zombiesHere.map { $0.id }
 
-        let selectedId = vm.selectedZombieId
-        let isTargetZombie = selectedId != nil && zombieIdsHere.contains(where: { $0 == selectedId })
+        let selectedZombieId = vm.selectedZombieId
+        let isTargetZombie = selectedZombieId != nil && zombieIdsHere.contains(where: { $0 == selectedZombieId })
 
         let building = vm.buildingAt(x: x, y: y)
 
@@ -253,9 +255,9 @@ struct GridView: View {
         let otherPlayersHere = vm.players.filter { p in
             p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
         }
+        let humanIds = otherPlayersHere.map { $0.userId }
 
         let hasZombie = !zombiesHere.isEmpty
-
         let hitTick = vm.zombieHitTick
 
         return GridTileViewModel(
@@ -274,8 +276,11 @@ struct GridView: View {
             zombieIds: zombieIdsHere,
             zombieCount: zombiesHere.count,
             otherPlayerCount: otherPlayersHere.count,
+            humanCount: otherPlayersHere.count,
             hitTick: hitTick,
-            selectedZombieIdOnTile: selectedId
+            selectedZombieIdOnTile: selectedZombieId,
+            humanIds: humanIds,
+            selectedHumanIdOnTile: vm.selectedHumanId
         )
     }
 }
@@ -296,6 +301,9 @@ private struct GridTileViewModel {
     let zombieIds: [String]
     let zombieCount: Int
     let otherPlayerCount: Int
+    let humanCount: Int
     let hitTick: Int
     let selectedZombieIdOnTile: String?
+    let humanIds: [String]
+    let selectedHumanIdOnTile: String?
 }
