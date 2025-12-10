@@ -9,76 +9,109 @@ import Foundation
 
 extension GameVM {
 
-  /// High-level combat entry point used by the UI.
-  /// Uses the current interactionKind / interactionPos to decide what to attack.
-  @MainActor
-  func attackSelected() {
-    guard let kind = interactionKind, let pos = interactionPos else {
-      pushCombat(GameStrings.combatNoTargetSelected)
-      return
+    /// High-level combat entry point used by the UI.
+    /// Uses the current interactionKind / interactionPos to decide what to attack.
+    @MainActor
+    func attackSelected() {
+        guard let kind = interactionKind, let pos = interactionPos else {
+            pushCombat(GameStrings.combatNoTargetSelected)
+            return
+        }
+
+        switch kind {
+        case .zombie:
+            // Bump the hit tick so the selected zombie tile can animate (shake) in the UI.
+            zombieHitTick &+= 1
+            attackZombieOnTile(pos: pos)
+
+        case .human:
+            attackHumanOnTile(pos: pos)
+
+        case .tile, .item:
+            pushCombat(GameStrings.combatCantAttackThat)
+        }
     }
 
-    switch kind {
-    case .zombie:
-      // Bump the hit tick so the selected zombie tile can animate (shake) in the UI.
-      zombieHitTick &+= 1
-      attackZombieOnTile(pos: pos)
-    case .tile, .human, .item:
-      pushCombat(GameStrings.combatCantAttackThat)
-    }
-  }
+    // MARK: - Zombie attacks
 
-  /// Find a zombie on the given tile and send an attack to the engine.
-  @MainActor
-  private func attackZombieOnTile(pos: Pos) {
-    // Must know where we are.
-    guard let myPos = myPos else {
-      pushCombat(GameStrings.combatDontKnowWhereYouAre)
-      return
-    }
+    /// Find a zombie on the given tile and send an attack to the engine.
+    @MainActor
+    private func attackZombieOnTile(pos: Pos) {
+        // Must know where we are.
+        guard let myPos = myPos else {
+            pushCombat(GameStrings.combatDontKnowWhereYouAre)
+            return
+        }
 
-    // For now, only allow attacks on your own tile.
-    guard myPos.x == pos.x && myPos.y == pos.y else {
-      pushCombat(GameStrings.combatZombieTooFar)
-      return
-    }
+        // For now, only allow attacks on your own tile.
+        guard myPos.x == pos.x && myPos.y == pos.y else {
+            pushCombat(GameStrings.combatZombieTooFar)
+            return
+        }
 
-    // Try to use a specifically selected zombie first, if we have one.
-    let target: Zombie?
-    if let selectedId = selectedZombieId {
-        if let z = zombies.first(where: { $0.id == selectedId && $0.alive }) {
-            // Ensure it is still on this tile.
-            if z.pos.x == pos.x && z.pos.y == pos.y {
-                target = z
-            } else {
-                target = nil
-            }
+        // Prefer specifically selected zombie on this tile.
+        let target: Zombie?
+
+        if let selectedId = selectedZombieId,
+           let z = zombies.first(where: { $0.id == selectedId && $0.alive }),
+           z.pos.x == pos.x && z.pos.y == pos.y {
+            target = z
         } else {
-            target = nil
+            let zombiesHere = zombies.filter { z in
+                z.alive && z.pos.x == pos.x && z.pos.y == pos.y
+            }
+            target = zombiesHere.first
         }
-    } else {
-        target = nil
-    }
 
-    // If no specific zombie is selected or it is no longer valid, fall back to first alive on this tile.
-    let finalTarget: Zombie?
-    if let t = target {
-        finalTarget = t
-    } else {
-        let zombiesHere = zombies.filter { z in
-            z.alive && z.pos.x == pos.x && z.pos.y == pos.y
+        guard let finalTarget = target else {
+            pushCombat(GameStrings.combatNoZombieHere)
+            return
         }
-        finalTarget = zombiesHere.first
+
+        // Fire off the unified engine attack against a "zombie" entity.
+        Task {
+            await self.attackEntity(targetId: finalTarget.id, targetType: "zombie")
+        }
     }
 
-    guard let target = finalTarget else {
-      pushCombat(GameStrings.combatNoZombieHere)
-      return
-    }
+    // MARK: - Human attacks (players for now, NPCs later)
 
-    // Fire off the engine attack.
-    Task {
-      await self.attackZombie(zombieId: target.id)
+    @MainActor
+    private func attackHumanOnTile(pos: Pos) {
+        guard let myPos = myPos else {
+            pushCombat(GameStrings.combatDontKnowWhereYouAre)
+            return
+        }
+
+        // Same rule: only attack humans on your own tile (for now).
+        guard myPos.x == pos.x && myPos.y == pos.y else {
+            pushCombat("That human is too far away.")
+            return
+        }
+
+        // All humans on this tile except me.
+        let humansHere = players.filter { p in
+            p.userId != uid && p.pos?.x == pos.x && p.pos?.y == pos.y
+        }
+
+        guard !humansHere.isEmpty else {
+            pushCombat("There is no other human here.")
+            return
+        }
+
+        let target: PlayerDoc
+
+        // Prefer currently selected human if still on this tile.
+        if let selectedId = selectedHumanId,
+           let selected = humansHere.first(where: { $0.userId == selectedId }) {
+            target = selected
+        } else {
+            target = humansHere.first!
+        }
+
+        // Unified attack vs a "player" entity.
+        Task {
+            await self.attackEntity(targetId: target.userId, targetType: "player")
+        }
     }
-  }
 }

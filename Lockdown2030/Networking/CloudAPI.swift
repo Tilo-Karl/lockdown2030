@@ -10,11 +10,11 @@ import Foundation
 enum CloudAPI {
     // Engine base (update if your service URL changes)
     private static let baseEngine = "https://ld2030-52812703983.europe-west4.run.app/api/ld2030/v1"
-    static let join   = "\(baseEngine)/join-game"
-    static let move   = "\(baseEngine)/move-player"
-    static let attack = "\(baseEngine)/attack-player"
-    static let attackZombie = "\(baseEngine)/attack-zombie"
-    static let tickGame = "\(baseEngine)/tick-game"
+
+    static let join        = "\(baseEngine)/join-game"
+    static let move        = "\(baseEngine)/move-player"
+    static let attackEntity = "\(baseEngine)/attack-entity"
+    static let tickGame    = "\(baseEngine)/tick-game"
 
     /// POST JSON helper with typed request/response
     static func postJSON<T: Encodable, R: Decodable>(to url: String, body: T) async throws -> R {
@@ -72,33 +72,25 @@ struct EngineMoveRes: Codable {
     let reason: String?
 }
 
-struct EngineAttackReq: Codable {
-    let gameId: String
-    let uid: String
-    let targetUid: String
+// Unified attack-entity request
+struct EngineAttackEntityReq: Codable {
+    let gameId: String?
+    let attackerUid: String
+    let targetId: String
+    /// "player", "zombie", "human", "npc", "item", "object"
+    let targetType: String
 }
 
-struct EngineAttackRes: Codable {
+// Unified attack-entity response (matches current backend shape)
+struct EngineAttackEntityRes: Codable {
     let ok: Bool
-    let targetHp: Int?
-    let reason: String?
-}
-
-struct EngineAttackZombieReq: Codable {
-    let gameId: String
-    let attackerUid: String          // attacker UID
-    let zombieId: String
+    let attackerUid: String?
+    let targetId: String?
+    let targetType: String?
+    let hit: Bool?
     let damage: Int?
-    let apCost: Int?
-}
-
-struct EngineAttackZombieRes: Codable {
-    let ok: Bool
-    let zombieHp: Int?
-    let playerHp: Int?
-    let zombieDidHit: Bool?
-    let zombieDamage: Int?
-    let reason: String?
+    let hpAfter: Int?
+    let dead: Bool?
     let error: String?
 }
 

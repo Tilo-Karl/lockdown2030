@@ -9,128 +9,66 @@ import Foundation
 
 extension GameVM {
 
+    /// Unified engine attack: player (you) vs any target entity.
+    /// `targetType` must match backend expectation: "zombie", "player", "item", etc.
     @MainActor
-    func attack(target: String) async {
-        guard !uid.isEmpty else { print("Attack error: missing uid"); return }
-        let req = EngineAttackReq(gameId: gameId, uid: uid, targetUid: target)
-        do {
-            let res: EngineAttackRes = try await CloudAPI.postJSON(
-                to: CloudAPI.attack,
-                body: req
-            )
-            if res.ok {
-                let hp = res.targetHp ?? -1
-                print("Attack:", ["ok": 1, "targetHp": hp])
-                // Keep this simple success line hard-coded for now.
-                self.pushCombat("Attack succeeded. Target HP is now \(hp).")
-            } else {
-                let reason = res.reason ?? "unknown"
-                print("Attack failed:", reason)
-                let msg = String(format: GameStrings.combatAttackFailedReason, reason)
-                self.pushCombat(msg)
-            }
-        } catch {
-            print("Attack error:", error)
-            self.pushCombat(GameStrings.combatAttackFailedNetwork)
-        }
-    }
-
-    @MainActor
-    func attackZombie(zombieId: String, damage: Int = 10, apCost: Int = 1) async {
+    func attackEntity(targetId: String, targetType: String) async {
         guard !uid.isEmpty else {
-            print("AttackZombie error: missing uid")
+            print("AttackEntity error: missing uid")
             return
         }
 
-        let req = EngineAttackZombieReq(
+        let req = EngineAttackEntityReq(
             gameId: gameId,
             attackerUid: uid,
-            zombieId: zombieId,
-            damage: damage,
-            apCost: apCost
+            targetId: targetId,
+            targetType: targetType
         )
 
         do {
-            let res: EngineAttackZombieRes = try await CloudAPI.postJSON(
-                to: CloudAPI.attackZombie,
+            let res: EngineAttackEntityRes = try await CloudAPI.postJSON(
+                to: CloudAPI.attackEntity,
                 body: req
             )
 
             if res.ok {
-                let zHp = res.zombieHp
-                let pHp = res.playerHp
-                let zHit = res.zombieDidHit ?? false
-                let zDmg = res.zombieDamage ?? 0
-
-                print("Attack zombie:", [
-                    "ok": 1,
-                    "zombieHp": zHp ?? -1,
-                    "playerHp": pHp ?? -1,
-                    "zombieDidHit": zHit,
-                    "zombieDamage": zDmg
-                ])
+                let typeLabel: String
+                switch targetType {
+                case "zombie": typeLabel = "zombie"
+                case "player": typeLabel = "human"
+                default:       typeLabel = "target"
+                }
 
                 var parts: [String] = []
-                var zombieDied = false
 
-                if let zHp = zHp {
-                    let hitLine = String(
-                        format: GameStrings.combatHitWithRemainingHp,
-                        damage,
-                        zHp
-                    )
-                    parts.append(hitLine)
-                    if zHp <= 0 {
-                        zombieDied = true
+                if res.hit == true {
+                    if let dmg = res.damage {
+                        if let hpAfter = res.hpAfter {
+                            parts.append("You hit the \(typeLabel) for \(dmg). HP is now \(hpAfter).")
+                        } else {
+                            parts.append("You hit the \(typeLabel) for \(dmg).")
+                        }
+                    } else {
+                        parts.append("You hit the \(typeLabel).")
                     }
                 } else {
-                    parts.append(GameStrings.combatSwingAtZombie)
+                    parts.append("Your attack missed the \(typeLabel).")
                 }
 
-                if zHit {
-                    if let pHp = pHp {
-                        parts.append(
-                            String(
-                                format: GameStrings.combatZombieHitsYouWithRemainingHp,
-                                zDmg,
-                                pHp
-                            )
-                        )
-                    } else {
-                        parts.append(
-                            String(
-                                format: GameStrings.combatZombieHitsYou,
-                                zDmg
-                            )
-                        )
-                    }
-                }
-
-                if zombieDied {
-                    parts.append(GameStrings.combatZombieDies)
+                if res.dead == true {
+                    parts.append("The \(typeLabel) dies.")
                 }
 
                 self.pushCombat(parts.joined(separator: " "))
 
             } else {
-                // Prefer backend error if reason is just "internal"
-                let backendReason = res.reason
-                let backendError  = res.error
-                
-                print("Attack zombie failed. reason=\(backendReason ?? "nil"), error=\(backendError ?? "nil")")
-                
-                let reasonToShow: String
-                if backendReason == "internal" || backendReason == nil {
-                    reasonToShow = backendError ?? "internal"
-                } else {
-                    reasonToShow = backendReason ?? "unknown"
-                }
-                
-                let msg = String(format: GameStrings.combatAttackFailedReason, reasonToShow)
+                let reason = res.error ?? "unknown"
+                let msg = String(format: GameStrings.combatAttackFailedReason, reason)
                 self.pushCombat(msg)
             }
+
         } catch {
-            print("Attack zombie error:", error)
+            print("AttackEntity error:", error)
             self.pushCombat(GameStrings.combatAttackFailedNetwork)
         }
     }

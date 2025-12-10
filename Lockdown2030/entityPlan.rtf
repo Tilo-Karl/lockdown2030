@@ -1,0 +1,683 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 .SFNS-Regular;\f1\fswiss\fcharset0 Helvetica;\f2\fnil\fcharset0 .SFNS-Semibold;
+\f3\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;\f4\fnil\fcharset0 HelveticaNeue-Bold;\f5\froman\fcharset0 TimesNewRomanPSMT;
+\f6\fnil\fcharset0 .SFNS-RegularItalic;\f7\fnil\fcharset0 AppleColorEmoji;}
+{\colortbl;\red255\green255\blue255;\red14\green14\blue14;}
+{\*\expandedcolortbl;;\cssrgb\c6700\c6700\c6700;}
+\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 Here\'92s how I\'92d do it, front + back, in a clean order so we don\'92t keep re-touching the same files.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 0. Definitions (what we\'92re aiming for)
+\f0\b0\fs28 \
+\
+Conceptually we want:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 WorldEntity
+\f0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id\
+	\'95	pos (x,y)\
+	\'95	hp, maxHp\
+	\'95	ap (optional / 0 for things that don\'92t act)\
+	\'95	kind: 
+\f3 .playerHuman
+\f0 , 
+\f3 .playerZombie
+\f0 , 
+\f3 .npcHuman
+\f0 , 
+\f3 .npcZombie
+\f0 , 
+\f3 .item
+\f0  \'85\
+	\'95	tags: 
+\f3 isPlayer
+\f0 , 
+\f3 isNPC
+\f0 , 
+\f3 isZombie
+\f0 , 
+\f3 isHuman
+\f0 , 
+\f3 isItem
+\f0 , 
+\f3 faction
+\f0 , etc.\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4\b UI rows
+\f0\b0  (what you see in the tile):\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Zombies row = 
+\f3 WorldEntity
+\f0  where 
+\f3 isZombie == true
+\f0 \
+	\'95	Humans row = 
+\f3 WorldEntity
+\f0  where 
+\f3 isHuman == true
+\f0  (players + human NPCs)\
+	\'95	Items row = 
+\f3 WorldEntity
+\f0  where 
+\f3 isItem == true
+\f0 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4\b Selection
+\f0\b0 :\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	UI still has 
+\f3 InteractionKind
+\f0  (
+\f3 .zombie
+\f0 , 
+\f3 .human
+\f0 , 
+\f3 .item
+\f0 , 
+\f3 .tile
+\f0 ) so the panel text stays nice.\
+	\'95	Under the hood: 
+\f4\b one canonical selection
+\f0\b0 : 
+\f3 selectedEntityId
+\f0  + 
+\f3 selectedEntityKind
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li660\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 (zombies/humans/items are just filtered views of that).\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 1. Backend: unify config + attack semantics
+\f0\b0\fs28 \
+\
+Files (Node, backend):\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 ld2030/v1/config/config-game.js
+\f0  (or wherever PLAYER lives)\
+	\'95	
+\f3 ld2030/v1/npc/zombie-config.js
+\f0 \
+	\'95	
+\f3 ld2030/v1/actions/attackZombie.js
+\f0  and any attack-player handler\
+	\'95	Tick / AI files that look at hp/alive (tick engine, reaction handlers)\
+\
+Steps:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f4\b Normalize configs into \'93entity configs\'94
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Give 
+\f3 PLAYER
+\f0  a shape similar to 
+\f3 ZOMBIES.WALKER
+\f0 :\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 type: 'PLAYER'
+\f0 \
+	\'95	
+\f3 species: 'human'
+\f0 \
+	\'95	keep 
+\f3 START_HP
+\f0  / 
+\f3 ATTACK_DAMAGE
+\f0  etc.\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Keep 
+\f3 ZOMBIES.WALKER
+\f0  as is but think of it as 
+\f3 type: 'ZOMBIE', species: 'zombie'
+\f0 .\
+	\'95	The goal is: any combat code can say \'93entityConfig.baseHp / attackDamage\'94 regardless of whether it\'92s a player or a zombie.\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f4\b Introduce a tiny \'93entity\'94 helper on the backend
+\f0\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 Utility that given a Firestore doc + type returns a normalized object:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 toEntityFromPlayer(playerDoc)
+\f0 \
+	\'95	
+\f3 toEntityFromZombie(zombieDoc, ZOMBIES)
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 Each returns 
+\f3 \{ id, type, species, hp, maxHp, pos, alive \}
+\f0 .\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	3.	
+\f4\b Unify attack logic
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Refactor 
+\f3 attackZombie
+\f0  and any 
+\f3 attackPlayer
+\f0  into:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 attackEntity(attackerEntity, targetEntity, attackConfig)
+\f0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 attackZombie
+\f0  now:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	loads player + zombie docs\
+	\'95	builds entities via helpers\
+	\'95	calls common 
+\f3 attackEntity
+\f0 \
+	\'95	writes back the hp/alive to the right doc\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	4.	
+\f4\b Make death semantics consistent
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	When hp \uc0\u8804  0:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Set 
+\f3 alive: false
+\f0  and 
+\f3 hp: 0
+\f0  in the zombie doc (no hard delete for now, you can use corpses later).\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Tick engine skips 
+\f3 alive === false
+\f0  for move/bite.\
+	\'95	Same pattern will work for future 
+\f3 npcHuman
+\f0  or 
+\f3 playerZombie
+\f0  if you want them.\
+\
+Result: backend doesn\'92t care if it\'92s a \'93zombie\'94 or \'93human\'94 in terms of math \'96 just config + tags.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 2. Frontend: WorldEntity layer in GameVM
+\f0\b0\fs28 \
+\
+Files (Swift):\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 GameVM.swift
+\f0 \
+	\'95	
+\f3 GameVM+Firestore.swift
+\f0 \
+	\'95	(optionally) a new file 
+\f3 GameVM+Entities.swift
+\f0  if you want to keep it clean\
+\
+Steps:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f4\b Define enums + struct
+\f0\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 In 
+\f3 GameVM
+\f0 :\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 enum EntityKind \{ case playerHuman, playerZombie, npcHuman, npcZombie, item \}
+\f0 \
+	\'95	
+\f3 struct WorldEntity \{ id, kind, pos: Pos, hp, maxHp, ap, isMe, displayName, etc. \}
+\f0 \
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f4\b Build worldEntities from existing arrays
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	In a computed property or a cached array:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Map 
+\f3 players
+\f0  \uc0\u8594  
+\f3 WorldEntity
+\f0  (using 
+\f3 EntityKind.playerHuman
+\f0  for now).\
+\pard\tqr\tx1300\tx1460\li1460\fi-1460\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 isMe = (player.userId == uid)
+\f0 \
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Map 
+\f3 zombies
+\f0  \uc0\u8594  
+\f3 WorldEntity
+\f0  using zombie-config info if needed.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 No Firestore schema change, just a VM view.\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	3.	
+\f4\b Tile helpers
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Add helpers in GameVM:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 entities(at pos: Pos) -> [WorldEntity]
+\f0 \
+	\'95	
+\f3 zombies(at pos: Pos) -> [WorldEntity]
+\f0  (filter by kind)\
+	\'95	
+\f3 humans(at pos: Pos) -> [WorldEntity]
+\f0 \
+	\'95	
+\f3 items(at pos: Pos) -> [WorldEntity]
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 These are what GridView will start using instead of reaching directly into 
+\f3 players
+\f0  and 
+\f3 zombies
+\f0 .\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 3. Frontend: unify selection state
+\f0\b0\fs28 \
+\
+Files:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 GameVM.swift
+\f0 \
+	\'95	
+\f3 GameVM+Interaction.swift
+\f0 \
+	\'95	
+\f3 GameVM+Tap.swift
+\f0 \
+\
+You 
+\f6\i already
+\f0\i0  have:\
+	\'95	
+\f3 interactionKind
+\f0 \
+	\'95	
+\f3 interactionPos
+\f0 \
+	\'95	
+\f3 selectedZombieId
+\f0 \
+	\'95	
+\f3 selectedHumanId
+\f0 \
+\
+Plan:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f4\b Introduce canonical selection
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 @Published var selectedEntityId: String?
+\f0 \
+	\'95	
+\f3 @Published var selectedEntityKind: EntityKind?
+\f0 \
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f4\b Have the old fields just wrap the new ones
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	For zombies:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Keep 
+\f3 interactionKind == .zombie
+\f0  for UI\
+	\'95	But under the hood: 
+\f3 selectedEntityKind = .playerZombie
+\f0  / 
+\f3 .npcZombie
+\f0  / 
+\f3 .npcHuman
+\f0  etc.\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Keep 
+\f3 interactionZombie
+\f0  helper, but implement it via 
+\f3 selectedEntityId
+\f0  and 
+\f3 worldEntities
+\f0 .\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	3.	
+\f4\b Tap handlers delegate to common selection logic
+\f0\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 In 
+\f3 GameVM+Tap.swift
+\f0 :\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 handleZombieTapByIndex(pos, index)
+\f0  \uc0\u8594  find 
+\f3 WorldEntity
+\f0  in 
+\f3 zombies(at: pos)
+\f0  then call 
+\f3 select(entity:)
+\f0 .\
+	\'95	
+\f3 handleHumanTapByIndex(pos, index)
+\f0  \uc0\u8594  find in 
+\f3 humans(at: pos)
+\f0  and call the same 
+\f3 select(entity:)
+\f0 .\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 Where 
+\f3 select(entity:)
+\f0 :\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	If already selected \uc0\u8594  clear selection.\
+	\'95	Else set 
+\f3 selectedEntityId
+\f0 , 
+\f3 selectedEntityKind
+\f0 , 
+\f3 interactionKind
+\f0  (zombie/human/item), 
+\f3 interactionPos
+\f0 .\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	4.	
+\f4\b Clear selection in one place
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 clearInteraction()
+\f0  becomes the only thing that resets:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 interactionPos
+\f0 \
+	\'95	
+\f3 interactionKind
+\f0 \
+	\'95	
+\f3 selectedEntityId
+\f0 \
+	\'95	
+\f3 selectedEntityKind
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 4. Frontend: GridView / GridCellView driven by WorldEntity
+\f0\b0\fs28 \
+\
+Files:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 GridView.swift
+\f0 \
+	\'95	
+\f3 GridCellView.swift
+\f0 \
+\
+Steps:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f4\b GridView uses worldEntities helpers
+\f0\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 In 
+\f3 makeTileViewModel
+\f0 :\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Get:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 zombiesHere = vm.zombies(at: tilePos)
+\f0 \
+	\'95	
+\f3 humansHere = vm.humans(at: tilePos)
+\f0 \
+	\'95	(later) 
+\f3 itemsHere = vm.items(at: tilePos)
+\f0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Pass down:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 zombieIds = zombiesHere.map(\\.id)
+\f0 \
+	\'95	
+\f3 humanIds = humansHere.map(\\.id)
+\f0  (new)\
+	\'95	
+\f3 selectedEntityId
+\f0  to highlight the right emoji.\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f4\b GridCellView gets per-entity info
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Add:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 humanIds: [String]
+\f0 \
+	\'95	
+\f3 selectedEntityId: String?
+\f0  (instead of separate selectedZombieId / selectedHumanId)\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Zombie row:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	highlight if 
+\f3 selectedEntityId == zombieIds[index]
+\f0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Human row:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	render up to 3 
+\f7 \uc0\u55357 \u56898 
+\f0  with outline based on 
+\f3 selectedEntityId == humanIds[index]
+\f0 \
+	\'95	tap index \uc0\u8594  call 
+\f3 onHumanTap(index)
+\f0 .\
+\
+So visual behaviour for humans = zombies, just with a different emoji.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 5. Frontend: Interaction panel uses WorldEntity
+\f0\b0\fs28 \
+\
+Files:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 ContentView+InteractionSection.swift
+\f0  (your new file)\
+	\'95	
+\f3 GameVM+Interaction.swift
+\f0 \
+\
+Steps:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f4\b Add helpers in GameVM
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f3 interactionEntity: WorldEntity?
+\f0  (like 
+\f3 interactionZombie
+\f0  but generic)\
+	\'95	
+\f3 interactionHp
+\f0 , 
+\f3 interactionMaxHp
+\f0 , 
+\f3 interactionHpRatio
+\f0 , 
+\f3 interactionHpColor
+\f0  based on 
+\f3 interactionEntity
+\f0 .\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f4\b Panel uses those for both zombie + human
+\f0\b0 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	If 
+\f3 kind == .zombie
+\f0  or 
+\f3 .human
+\f0 , show HP bar using 
+\f3 interactionEntity
+\f0 .\
+	\'95	Button label:\
+\pard\tqr\tx900\tx1060\li1060\fi-1060\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	For now: \'93Attack\'94 for both 
+\f3 .zombie
+\f0  and 
+\f3 .human
+\f0  (future: branch into talk/trade etc.).\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b\fs34 \cf2 6. Plug in NPCs & items later with zero structural changes
+\f0\b0\fs28 \
+\
+Once the above is done, adding:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Human NPCs (new Firestore collection 
+\f3 npcs
+\f0 )\
+	\'95	Items (new collection or embedded in tiles)\
+\
+\'85is just:\
+	\'95	New mapping in 
+\f3 GameVM+Entities.swift
+\f0 : 
+\f3 npcs
+\f0  \uc0\u8594  
+\f3 WorldEntity(kind: .npcHuman)
+\f0 ; 
+\f3 items
+\f0  \uc0\u8594  
+\f3 WorldEntity(kind: .item)
+\f0 .\
+	\'95	
+\f3 entities(at:)
+\f0  start including them automatically.\
+	\'95	Grid rows:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Humans row already uses 
+\f3 isHuman
+\f0  \'96 NPCs show up there \'93for free\'94.\
+	\'95	Items row already uses 
+\f3 isItem
+\f0 .\
+\
+No changes to selection logic, interaction panel, or backend attack math.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \
+
+\f0 \uc0\u11835 
+\f1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \
+If you want, next step we can start with 
+\f4\b Step 2 (WorldEntity in GameVM)
+\f0\b0  since that\'92s the foundation for everything else, then go selection \uc0\u8594  Grid \u8594  panel in one pass so we don\'92t keep reopening the same files.}
