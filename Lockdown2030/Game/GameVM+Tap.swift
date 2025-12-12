@@ -8,7 +8,7 @@
 @MainActor
 extension GameVM {
 
-    // MARK: - Tile taps
+    // MARK: - Tile taps (movement + tile panel)
 
     func handleTileTap(pos: Pos) {
         guard let current = myPos else { return }
@@ -33,49 +33,11 @@ extension GameVM {
         Task { await move(dx: dx, dy: dy) }
     }
 
-    // MARK: - Zombie taps
+    // MARK: - ONE entity tap (zombie / player / npc / item)
 
-    func handleZombieTapOnTile(pos: Pos, index: Int) {
-        let zombiesHere = zombies.filter {
-            $0.alive && $0.pos == pos
-        }
-        guard !zombiesHere.isEmpty else {
-            clearInteraction()
-            return
-        }
-
-        let clampedIndex = max(0, min(index, zombiesHere.count - 1))
-        let target = zombiesHere[clampedIndex]
-        handleZombieTap(zombieId: target.id)
-    }
-
-    func handleZombieTap(zombieId: String) {
-        guard let target = zombies.first(where: { $0.id == zombieId }) else {
-            clearInteraction()
-            return
-        }
-
-        guard let distance = distanceFromMe(to: target.pos) else { return }
-
-        if distance == 0 {
-            // Toggle selection on same tile
-            if interactionKind == .zombie,
-               selectedEntityId == zombieId,
-               isSameTile(interactionPos, target.pos) {
-                clearInteraction()
-            } else {
-                selectEntity(at: target.pos, kind: .zombie, id: zombieId)
-            }
-        } else {
-            clearInteraction()
-        }
-    }
-
-    // MARK: - Human taps (players for now; NPCs later)
-
-    func handleHumanTap(humanId: String) {
-        guard let target = players.first(where: { $0.userId == humanId }),
-              let pos = target.pos else {
+    func handleEntityTap(entityId: String) {
+        guard let pos = entityPos(for: entityId),
+              let kind = interactionKind(for: entityId) else {
             clearInteraction()
             return
         }
@@ -83,29 +45,13 @@ extension GameVM {
         guard let distance = distanceFromMe(to: pos) else { return }
 
         if distance == 0 {
-            if interactionKind == .human,
-               selectedEntityId == humanId,
+            // Toggle selection if already selected on same tile
+            if interactionKind == kind,
+               selectedEntityId == entityId,
                isSameTile(interactionPos, pos) {
                 clearInteraction()
             } else {
-                selectEntity(at: pos, kind: .human, id: humanId)
-            }
-        } else {
-            clearInteraction()
-        }
-    }
-
-    // MARK: - Item taps (tile-level for now)
-
-    func handleItemTap(pos: Pos) {
-        guard let distance = distanceFromMe(to: pos) else { return }
-
-        if distance == 0 {
-            if isSameTile(interactionPos, pos), interactionKind == .item {
-                clearInteraction()
-            } else {
-                // No concrete item id yet in UI (tile-level open)
-                selectEntity(at: pos, kind: .item, id: nil)
+                selectEntity(at: pos, kind: kind, id: entityId)
             }
         } else {
             clearInteraction()
@@ -113,6 +59,22 @@ extension GameVM {
     }
 
     // MARK: - Private helpers
+
+    private func interactionKind(for entityId: String) -> InteractionKind? {
+        if zombies.contains(where: { $0.id == entityId }) { return .zombie }
+        if players.contains(where: { $0.userId == entityId }) { return .human }
+        if npcs.contains(where: { $0.id == entityId }) { return .human }
+        if items.contains(where: { $0.id == entityId }) { return .item }
+        return nil
+    }
+
+    private func entityPos(for entityId: String) -> Pos? {
+        if let z = zombies.first(where: { $0.id == entityId }) { return z.pos }
+        if let p = players.first(where: { $0.userId == entityId }) { return p.pos }
+        if let n = npcs.first(where: { $0.id == entityId }) { return n.pos }
+        if let i = items.first(where: { $0.id == entityId }) { return i.pos }
+        return nil
+    }
 
     private func distanceFromMe(to pos: Pos) -> Int? {
         guard let current = myPos else { return nil }

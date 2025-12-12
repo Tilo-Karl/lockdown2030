@@ -25,14 +25,14 @@ extension GameVM {
         case .human:
             attackHumanOnTile(pos: pos)
 
-        case .tile, .item:
+        case .item:
+            attackItemOnTile(pos: pos)
+
+        case .tile:
             pushCombat(GameStrings.combatCantAttackThat)
         }
     }
 
-    // MARK: - Zombie attacks
-
-    @MainActor
     private func attackZombieOnTile(pos: Pos) {
         guard let myPos = myPos else { return }
         guard myPos == pos else {
@@ -40,30 +40,23 @@ extension GameVM {
             return
         }
 
-        let target: Zombie?
-
-        // Prefer selected entity id (only if we’re in zombie interaction and it’s on this tile)
-        if interactionKind == .zombie,
-           let selectedId = selectedEntityId,
-           let z = zombies.first(where: { $0.id == selectedId && $0.alive && $0.pos == pos }) {
-            target = z
-        } else {
-            target = zombies.first { $0.alive && $0.pos == pos }
-        }
+        // Prefer selectedEntityId if it's a zombie on this tile.
+        let target: Zombie? = {
+            if let id = selectedEntityId,
+               let z = zombies.first(where: { $0.id == id && $0.alive && $0.pos == pos }) {
+                return z
+            }
+            return zombies.first { $0.alive && $0.pos == pos }
+        }()
 
         guard let finalTarget = target else {
             pushCombat(GameStrings.combatNoZombieHere)
             return
         }
 
-        Task {
-            await attackEntity(targetId: finalTarget.id, targetType: "zombie")
-        }
+        Task { await attackEntity(targetId: finalTarget.id, targetType: "zombie") }
     }
 
-    // MARK: - Human attacks (players for now)
-
-    @MainActor
     private func attackHumanOnTile(pos: Pos) {
         guard let myPos = myPos else { return }
         guard myPos == pos else {
@@ -71,28 +64,53 @@ extension GameVM {
             return
         }
 
-        let humansHere = players.filter {
-            $0.userId != uid && $0.pos == pos
+        // Prefer selectedEntityId if it's on this tile.
+        if let id = selectedEntityId {
+            // Player target
+            if let p = players.first(where: { $0.userId == id && $0.userId != uid && $0.pos == pos }) {
+                Task { await attackEntity(targetId: p.userId, targetType: "player") }
+                return
+            }
+            // NPC target
+            if let n = npcs.first(where: { $0.id == id && ($0.alive ?? true) && $0.pos == pos }) {
+                Task { await attackEntity(targetId: n.id, targetType: "npc") }
+                return
+            }
         }
 
-        guard !humansHere.isEmpty else {
-            pushCombat("There is no other human here.")
+        // Fallback: first player on tile, else first npc on tile
+        if let p = players.first(where: { $0.userId != uid && $0.pos == pos }) {
+            Task { await attackEntity(targetId: p.userId, targetType: "player") }
+            return
+        }
+        if let n = npcs.first(where: { ($0.alive ?? true) && $0.pos == pos }) {
+            Task { await attackEntity(targetId: n.id, targetType: "npc") }
             return
         }
 
-        let target: PlayerDoc
+        pushCombat("There is no other human here.")
+    }
 
-        // Prefer selected entity id (only if we’re in human interaction and it’s on this tile)
-        if interactionKind == .human,
-           let selectedId = selectedEntityId,
-           let selected = humansHere.first(where: { $0.userId == selectedId }) {
-            target = selected
-        } else {
-            target = humansHere.first!
+    private func attackItemOnTile(pos: Pos) {
+        guard let myPos = myPos else { return }
+        guard myPos == pos else {
+            pushCombat("That item is too far away.")
+            return
         }
 
-        Task {
-            await attackEntity(targetId: target.userId, targetType: "player")
+        let target: WorldItem? = {
+            if let id = selectedEntityId,
+               let it = items.first(where: { $0.id == id && $0.pos == pos }) {
+                return it
+            }
+            return items.first { $0.pos == pos }
+        }()
+
+        guard let item = target else {
+            pushCombat("There is no item here.")
+            return
         }
+
+        Task { await attackEntity(targetId: item.id, targetType: "item") }
     }
 }

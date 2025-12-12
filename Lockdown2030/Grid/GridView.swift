@@ -9,10 +9,8 @@ import SwiftUI
 
 struct GridView: View {
     @ObservedObject var vm: GameVM
-    /// Internal zoom radius (how far around the player we render).
     @State private var zoomRadius: Int
     @State private var lastTap: Pos? = nil
-    /// Base tile size (in points) used as input to the viewport’s sizing logic.
     private let baseCellSize: CGFloat
 
     init(vm: GameVM, viewRadius: Int? = nil, cellSize: CGFloat = GridConfig.default.minCellSize) {
@@ -33,12 +31,8 @@ struct GridView: View {
             ScrollViewReader { proxy in
                 ScrollView([.vertical, .horizontal]) {
                     ZStack(alignment: .bottomTrailing) {
-                        VStack(spacing: 2) {
-                            gridContent(geo: geo)
-                        }
-
-                        zoomControls
-                            .padding(8)
+                        VStack(spacing: 2) { gridContent(geo: geo) }
+                        zoomControls.padding(8)
                     }
                     .padding(.vertical, 10)
                 }
@@ -92,6 +86,7 @@ struct GridView: View {
             hasZombie: tile.hasZombie,
             zombieIds: tile.zombieIds,
             humanIds: tile.humanIds,
+            itemIds: tile.itemIds,
             selectedEntityId: tile.selectedEntityId,
             zombieCount: tile.zombieCount,
             otherPlayerCount: tile.otherPlayerCount,
@@ -101,15 +96,8 @@ struct GridView: View {
                 guard let vm = vm else { return }
                 vm.handleTileTap(pos: pos)
             },
-            onZombieTap: { [weak vm] emojiIndex in
-                guard let vm = vm else { return }
-                vm.handleZombieTapOnTile(pos: pos, index: emojiIndex)
-            },
-            onHumanTap: { [weak vm] humanId in
-                vm?.handleHumanTap(humanId: humanId)
-            },
-            onItemTap: { [weak vm] in
-                vm?.handleItemTap(pos: pos)
+            onEntityTap: { [weak vm] entityId in
+                vm?.handleEntityTap(entityId: entityId)
             }
         )
         .id(tile.id)
@@ -123,9 +111,7 @@ struct GridView: View {
         let zoomFactor = clampedRadius + 1
 
         VStack(spacing: 4) {
-            Button(action: {
-                if zoomRadius > 0 { zoomRadius -= 1 }
-            }) {
+            Button(action: { if zoomRadius > 0 { zoomRadius -= 1 } }) {
                 Text("+").font(.subheadline)
             }
             .buttonStyle(.bordered)
@@ -134,9 +120,7 @@ struct GridView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Button(action: {
-                if zoomRadius < vm.maxViewRadius { zoomRadius += 1 }
-            }) {
+            Button(action: { if zoomRadius < vm.maxViewRadius { zoomRadius += 1 } }) {
                 Text("–").font(.subheadline)
             }
             .buttonStyle(.bordered)
@@ -209,32 +193,26 @@ struct GridView: View {
 
         let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
 
-        let zombiesHere = vm.zombies.filter { $0.pos.x == x && $0.pos.y == y }
-        let zombieIdsHere = zombiesHere.map { $0.id }
+        let pos = Pos(x: x, y: y)
 
-        let npcsHere = vm.npcs.filter { $0.pos.x == x && $0.pos.y == y }
+        // Zombies
+        let zombiesHere = vm.zombies.filter { $0.alive && $0.pos == pos }
+        let zombieIds = zombiesHere.map { $0.id }
 
-        let otherPlayersHere = vm.players.filter { p in
-            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
-        }
-        let humanIdsHere = otherPlayersHere.map { $0.userId } + npcsHere.map { $0.id }
+        // Humans = players (not me) + NPCs
+        let otherPlayersHere = vm.players.filter { $0.userId != vm.uid && $0.pos == pos }
+        let npcsHere = vm.npcs.filter { ($0.alive ?? true) && $0.pos == pos }
+        let humanIds = otherPlayersHere.map { $0.userId } + npcsHere.map { $0.id }
 
-        let itemsHere = vm.items.filter { $0.pos.x == x && $0.pos.y == y }
+        // Items
+        let itemsHere = vm.items.filter { $0.pos == pos }
+        let itemIds = itemsHere.map { $0.id }
 
-        let selectedEntityId = vm.selectedEntityId
+        let selectedId = vm.selectedEntityId
 
         let isTargetSelectedEntity: Bool = {
-            guard let id = selectedEntityId, let kind = vm.interactionKind else { return false }
-            switch kind {
-            case .zombie:
-                return zombieIdsHere.contains(id)
-            case .human:
-                return humanIdsHere.contains(id)
-            case .item:
-                return itemsHere.contains(where: { $0.id == id })
-            case .tile:
-                return false
-            }
+            guard let sel = selectedId else { return false }
+            return zombieIds.contains(sel) || humanIds.contains(sel) || itemIds.contains(sel)
         }()
 
         let building = vm.buildingAt(x: x, y: y)
@@ -268,14 +246,15 @@ struct GridView: View {
             tileColor: vm.tileColorAt(x: x, y: y),
             tileLabel: tileLabel,
             hasZombie: hasZombie,
-            zombieIds: zombieIdsHere,
-            humanIds: humanIdsHere,
-            selectedEntityId: selectedEntityId,
+            zombieIds: zombieIds,
+            humanIds: humanIds,
+            itemIds: itemIds,
             zombieCount: zombiesHere.count,
             otherPlayerCount: otherPlayersHere.count,
-            humanCount: humanIdsHere.count,
-            itemCount: itemsHere.count,
-            hitTick: hitTick
+            humanCount: humanIds.count,
+            itemCount: itemIds.count,
+            hitTick: hitTick,
+            selectedEntityId: selectedId
         )
     }
 }
@@ -295,10 +274,11 @@ private struct GridTileViewModel {
     let hasZombie: Bool
     let zombieIds: [String]
     let humanIds: [String]
-    let selectedEntityId: String?
+    let itemIds: [String]
     let zombieCount: Int
     let otherPlayerCount: Int
     let humanCount: Int
     let itemCount: Int
     let hitTick: Int
+    let selectedEntityId: String?
 }

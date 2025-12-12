@@ -24,10 +24,13 @@ struct GridCellView: View {
     let tileLabel: String
 
     let hasZombie: Bool
+
+    // Per-row entity ids
     let zombieIds: [String]
     let humanIds: [String]
+    let itemIds: [String]
 
-    /// Single selected entity id (zombie/human/item) for highlight only.
+    /// Canonical selection
     let selectedEntityId: String?
 
     var zombieCount: Int
@@ -36,9 +39,7 @@ struct GridCellView: View {
     var itemCount: Int
 
     let onTileTap: (() -> Void)?
-    let onZombieTap: ((Int) -> Void)?
-    let onHumanTap: ((String) -> Void)?
-    let onItemTap: (() -> Void)?
+    let onEntityTap: ((String) -> Void)?
 
     @State private var isHitAnimating = false
 
@@ -57,15 +58,14 @@ struct GridCellView: View {
         hasZombie: Bool,
         zombieIds: [String] = [],
         humanIds: [String] = [],
+        itemIds: [String] = [],
         selectedEntityId: String? = nil,
         zombieCount: Int = 0,
         otherPlayerCount: Int = 0,
         humanCount: Int = 0,
         itemCount: Int = 0,
         onTileTap: (() -> Void)? = nil,
-        onZombieTap: ((Int) -> Void)? = nil,
-        onHumanTap: ((String) -> Void)? = nil,
-        onItemTap: (() -> Void)? = nil
+        onEntityTap: ((String) -> Void)? = nil
     ) {
         self.x = x
         self.y = y
@@ -81,15 +81,14 @@ struct GridCellView: View {
         self.hasZombie = hasZombie
         self.zombieIds = zombieIds
         self.humanIds = humanIds
+        self.itemIds = itemIds
         self.selectedEntityId = selectedEntityId
         self.zombieCount = zombieCount
         self.otherPlayerCount = otherPlayerCount
         self.humanCount = humanCount
         self.itemCount = itemCount
         self.onTileTap = onTileTap
-        self.onZombieTap = onZombieTap
-        self.onHumanTap = onHumanTap
-        self.onItemTap = onItemTap
+        self.onEntityTap = onEntityTap
     }
 
     var body: some View {
@@ -145,9 +144,8 @@ private extension GridCellView {
                 let shown = min(effectiveZombieCount, 3)
 
                 ForEach(0..<shown, id: \.self) { index in
-                    let isSelectedEmoji =
-                        index < zombieIds.count &&
-                        selectedEntityId == zombieIds[index]
+                    let id = (index < zombieIds.count) ? zombieIds[index] : nil
+                    let isSelectedEmoji = (id != nil && selectedEntityId == id)
 
                     Text("🧟")
                         .font(.system(size: min(cellSize * 0.6, 28)))
@@ -164,13 +162,17 @@ private extension GridCellView {
                             .spring(response: 0.18, dampingFraction: 0.35),
                             value: isHitAnimating
                         )
-                        .onTapGesture { onZombieTap?(index) }
+                        .onTapGesture {
+                            if let id { onEntityTap?(id) }
+                        }
                 }
 
                 if effectiveZombieCount > shown {
                     Text("+\(effectiveZombieCount - shown)")
                         .font(.system(size: min(cellSize * 0.45, 16)))
-                        .onTapGesture { onZombieTap?(0) }
+                        .onTapGesture {
+                            if let first = zombieIds.first { onEntityTap?(first) }
+                        }
                 }
 
                 Spacer(minLength: 0)
@@ -180,15 +182,14 @@ private extension GridCellView {
 
     @ViewBuilder
     var humanRow: some View {
-        let totalHumans = humanIds.count
-        if totalHumans > 0 {
+        let total = humanIds.count
+        if total > 0 {
             HStack(spacing: 1) {
-                let shown = min(totalHumans, 3)
+                let shown = min(total, 3)
 
                 ForEach(0..<shown, id: \.self) { index in
-                    let isSelected =
-                        index < humanIds.count &&
-                        selectedEntityId == humanIds[index]
+                    let id = humanIds[index]
+                    let isSelected = (selectedEntityId == id)
 
                     Text("🙂")
                         .font(.system(size: min(cellSize * 0.3, 18)))
@@ -200,20 +201,14 @@ private extension GridCellView {
                                     lineWidth: 2
                                 )
                         )
-                        .onTapGesture {
-                            if index < humanIds.count {
-                                onHumanTap?(humanIds[index])
-                            }
-                        }
+                        .onTapGesture { onEntityTap?(id) }
                 }
 
-                if totalHumans > shown {
-                    Text("+\(totalHumans - shown)")
+                if total > shown {
+                    Text("+\(total - shown)")
                         .font(.system(size: min(cellSize * 0.3, 12)))
                         .onTapGesture {
-                            if let first = humanIds.first {
-                                onHumanTap?(first)
-                            }
+                            if let first = humanIds.first { onEntityTap?(first) }
                         }
                 }
 
@@ -224,11 +219,36 @@ private extension GridCellView {
 
     @ViewBuilder
     var itemRow: some View {
-        if itemCount > 0 {
+        let total = itemIds.count
+        if total > 0 {
             HStack(spacing: 2) {
-                Text("🎒\(itemCount)")
-                    .font(.system(size: min(cellSize * 0.3, 12)))
-                    .onTapGesture { onItemTap?() }
+                let shown = min(total, 3)
+
+                ForEach(0..<shown, id: \.self) { index in
+                    let id = itemIds[index]
+                    let isSelected = (selectedEntityId == id)
+
+                    Text("🎒")
+                        .font(.system(size: min(cellSize * 0.3, 18)))
+                        .padding(2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(
+                                    isSelected ? Color.yellow.opacity(0.9) : Color.clear,
+                                    lineWidth: 2
+                                )
+                        )
+                        .onTapGesture { onEntityTap?(id) }
+                }
+
+                if total > shown {
+                    Text("+\(total - shown)")
+                        .font(.system(size: min(cellSize * 0.3, 12)))
+                        .onTapGesture {
+                            if let first = itemIds.first { onEntityTap?(first) }
+                        }
+                }
+
                 Spacer(minLength: 0)
             }
         }
