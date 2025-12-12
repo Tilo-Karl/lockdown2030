@@ -12,6 +12,7 @@ extension ContentView {
         Group {
             if let pos = vm.interactionPos, let kind = vm.interactionKind {
                 VStack(alignment: .leading, spacing: 4) {
+                    // Header row: title + coords + close button
                     HStack(spacing: 8) {
                         Text(interactionTitle(for: kind))
                             .font(.caption)
@@ -37,8 +38,8 @@ extension ContentView {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    // Zombie HP line + bar
-                    if kind == .zombie,
+                    // HP line + bar for any attackable entity (zombie / human NPC)
+                    if (kind == .zombie || kind == .human),
                        let hp = vm.interactionZombieHp,
                        let ratio = vm.interactionZombieHpRatio {
                         let hpColor = vm.interactionZombieHpColor ?? .green
@@ -68,14 +69,14 @@ extension ContentView {
                             case .zombie:
                                 vm.attackSelected()
                             case .human:
-                                // Future: attack / talk to selected human.
-                                break
+                                // For now share same attack path as zombie.
+                                vm.attackSelected()
                             case .tile, .item:
                                 break
                             }
                         }
                         .buttonStyle(.bordered)
-                        // Enable for zombie + human (human is a no-op for now).
+                        // Enable for zombie + human (human uses same attackSelected() for now).
                         .disabled(!(kind == .zombie || kind == .human))
                     }
                 }

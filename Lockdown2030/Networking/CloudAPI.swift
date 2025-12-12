@@ -75,7 +75,7 @@ struct EngineMoveRes: Codable {
 // Unified attack-entity request
 struct EngineAttackEntityReq: Codable {
     let gameId: String?
-    let attackerUid: String
+    let uid: String          // ← was attackerUid
     let targetId: String
     /// "player", "zombie", "human", "npc", "item", "object"
     let targetType: String

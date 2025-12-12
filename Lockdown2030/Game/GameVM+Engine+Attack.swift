@@ -20,7 +20,7 @@ extension GameVM {
 
         let req = EngineAttackEntityReq(
             gameId: gameId,
-            attackerUid: uid,
+            uid: uid,               // ← was attackerUid: uid
             targetId: targetId,
             targetType: targetType
         )
@@ -30,6 +30,7 @@ extension GameVM {
                 to: CloudAPI.attackEntity,
                 body: req
             )
+            // ... rest of your method unchanged ...
 
             if res.ok {
                 let typeLabel: String

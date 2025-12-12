@@ -28,6 +28,16 @@ extension GameVM {
     var zombiesColRef: CollectionReference? {
         gameDocRef?.collection("zombies")
     }
+    
+    /// games/{gameId}/npcs
+    var npcsColRef: CollectionReference? {
+        gameDocRef?.collection("npcs")
+    }
+
+    /// games/{gameId}/items
+    var itemsColRef: CollectionReference? {
+        gameDocRef?.collection("items")
+    }
 
     // MARK: - Game document listener (map + meta)
 
@@ -150,6 +160,127 @@ extension GameVM {
         }
     }
 
+    // MARK: - Items listener (world items on tiles)
+
+    @MainActor
+    func startItemsListener() {
+        guard let itemsColRef else { return }
+
+        // Tear down any previous listener
+        itemsListener?.remove()
+
+        itemsListener = itemsColRef.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+
+            if let err = err {
+                print("Items listener ERROR: \(err.localizedDescription)")
+                return
+            }
+
+            let docs = snap?.documents ?? []
+
+            let mapped: [WorldItem] = docs.compactMap { doc in
+                let data = doc.data()
+
+                guard
+                    let type = data["type"] as? String,
+                    let kind = data["kind"] as? String,
+                    let posDict = data["pos"] as? [String: Any],
+                    let x = posDict["x"] as? Int,
+                    let y = posDict["y"] as? Int
+                else {
+                    return nil
+                }
+
+                let hp     = data["hp"] as? Int
+                let weight = data["weight"] as? Int
+                let armor  = data["armor"] as? Int
+                let damage = data["damage"] as? Int
+
+                return WorldItem(
+                    id: doc.documentID,
+                    type: type,
+                    kind: kind,
+                    hp: hp,
+                    weight: weight,
+                    armor: armor,
+                    damage: damage,
+                    pos: Pos(x: x, y: y)
+                )
+            }
+
+            DispatchQueue.main.async {
+                self.items = mapped
+            }
+        }
+    }
+
+    @MainActor
+    func stopItemsListener() {
+        itemsListener?.remove()
+        itemsListener = nil
+    }
+    
+    // MARK: - NPCs listener (human NPCs: civilians / raiders / traders)
+
+    /// Listen to games/{gameId}/npcs and keep `npcs` in sync.
+    @MainActor
+    func startNpcsListener() {
+        guard let npcsColRef else { return }
+
+        // Tear down any previous listener
+        npcsListener?.remove()
+
+        npcsListener = npcsColRef.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+
+            if let err = err {
+                print("NPCs listener ERROR: \(err.localizedDescription)")
+                return
+            }
+
+            let docs = snap?.documents ?? []
+
+            let mapped: [Npc] = docs.compactMap { doc in
+                let data = doc.data()
+
+                guard
+                    let type = data["type"] as? String,
+                    let kind = data["kind"] as? String,
+                    let hp = data["hp"] as? Int,
+                    let alive = data["alive"] as? Bool,
+                    let posDict = data["pos"] as? [String: Any],
+                    let x = posDict["x"] as? Int,
+                    let y = posDict["y"] as? Int
+                else {
+                    return nil
+                }
+
+                let faction = data["faction"] as? String
+
+                return Npc(
+                    id: doc.documentID,
+                    type: type,
+                    kind: kind,
+                    faction: faction,
+                    hp: hp,
+                    alive: alive,
+                    pos: Pos(x: x, y: y)
+                )
+            }
+
+            DispatchQueue.main.async {
+                self.npcs = mapped
+            }
+        }
+    }
+
+    @MainActor
+    func stopNpcsListener() {
+        npcsListener?.remove()
+        npcsListener = nil
+    }
+    
     // MARK: - Zombies listener
 
     /// Listen to games/{gameId}/zombies and keep `zombies` in sync.
@@ -267,4 +398,5 @@ extension GameVM {
         playersListener?.remove()
         playersListener = nil
     }
+    
 }

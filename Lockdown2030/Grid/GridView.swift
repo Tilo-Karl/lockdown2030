@@ -13,14 +13,11 @@ struct GridView: View {
     @State private var zoomRadius: Int
     @State private var lastTap: Pos? = nil
     /// Base tile size (in points) used as input to the viewport’s sizing logic.
-    /// Defaults to `GridConfig.default.minCellSize` so ContentView and GridView
-    /// share the same notion of “minimum tile size”.
     private let baseCellSize: CGFloat
 
     init(vm: GameVM, viewRadius: Int? = nil, cellSize: CGFloat = GridConfig.default.minCellSize) {
         self.vm = vm
         self.baseCellSize = cellSize
-        // Seed the zoom radius from the caller if provided, otherwise use the engine’s max view radius.
         _zoomRadius = State(initialValue: viewRadius ?? vm.maxViewRadius)
     }
 
@@ -30,7 +27,6 @@ struct GridView: View {
         }
     }
 
-    // Extracted into a helper so the main body stays simpler and Xcode can type-check it.
     @ViewBuilder
     private func content(geo: GeometryProxy) -> some View {
         if vm.gridW > 0 && vm.gridH > 0 {
@@ -51,9 +47,7 @@ struct GridView: View {
                         let c = clampedToGrid(pos)
                         let id = tileId(x: c.x, y: c.y)
                         DispatchQueue.main.async {
-                            withAnimation {
-                                proxy.scrollTo(id, anchor: .center)
-                            }
+                            withAnimation { proxy.scrollTo(id, anchor: .center) }
                         }
                     }
                 }
@@ -61,9 +55,7 @@ struct GridView: View {
                     guard let pos = newValue else { return }
                     let c = clampedToGrid(pos)
                     let id = tileId(x: c.x, y: c.y)
-                    withAnimation {
-                        proxy.scrollTo(id, anchor: .center)
-                    }
+                    withAnimation { proxy.scrollTo(id, anchor: .center) }
                 }
             }
         } else {
@@ -90,7 +82,7 @@ struct GridView: View {
             y: tile.y,
             isMe: tile.isMe,
             isHighlighted: tile.isHighlighted,
-            isTargetZombie: tile.isTargetZombie,
+            isTargetSelectedEntity: tile.isTargetSelectedEntity,
             hitTick: tile.hitTick,
             building: tile.building,
             cellSize: tile.tileSize,
@@ -99,16 +91,14 @@ struct GridView: View {
             tileLabel: tile.tileLabel,
             hasZombie: tile.hasZombie,
             zombieIds: tile.zombieIds,
-            selectedZombieId: tile.selectedZombieIdOnTile,
             humanIds: tile.humanIds,
-            selectedHumanId: tile.selectedHumanIdOnTile,
+            selectedEntityId: tile.selectedEntityId,
             zombieCount: tile.zombieCount,
             otherPlayerCount: tile.otherPlayerCount,
             humanCount: tile.humanCount,
-            itemCount: 0,
+            itemCount: tile.itemCount,
             onTileTap: { [weak vm] in
                 guard let vm = vm else { return }
-                vm.log.info("Tapped tile in GridView — x: \(pos.x, privacy: .public), y: \(pos.y, privacy: .public)")
                 vm.handleTileTap(pos: pos)
             },
             onZombieTap: { [weak vm] emojiIndex in
@@ -129,18 +119,14 @@ struct GridView: View {
 
     @ViewBuilder
     private var zoomControls: some View {
-        // Clamp radius safely
         let clampedRadius = max(0, min(zoomRadius, vm.maxViewRadius))
         let zoomFactor = clampedRadius + 1
 
         VStack(spacing: 4) {
             Button(action: {
-                if zoomRadius > 0 {
-                    zoomRadius -= 1
-                }
+                if zoomRadius > 0 { zoomRadius -= 1 }
             }) {
-                Text("+")
-                    .font(.subheadline)
+                Text("+").font(.subheadline)
             }
             .buttonStyle(.bordered)
 
@@ -149,12 +135,9 @@ struct GridView: View {
                 .foregroundStyle(.secondary)
 
             Button(action: {
-                if zoomRadius < vm.maxViewRadius {
-                    zoomRadius += 1
-                }
+                if zoomRadius < vm.maxViewRadius { zoomRadius += 1 }
             }) {
-                Text("–")
-                    .font(.subheadline)
+                Text("–").font(.subheadline)
             }
             .buttonStyle(.bordered)
         }
@@ -187,10 +170,7 @@ struct GridView: View {
             radius: radius
         )
 
-        let tileSize = viewport.tileSize(
-            in: geo,
-            baseCellSize: baseCellSize
-        )
+        let tileSize = viewport.tileSize(in: geo, baseCellSize: baseCellSize)
 
         ForEach(viewport.yRange, id: \.self) { y in
             HStack(spacing: 2) {
@@ -229,13 +209,33 @@ struct GridView: View {
 
         let isHighlighted = (lastTap?.x == x && lastTap?.y == y)
 
-        let zombiesHere = vm.zombies.filter { z in
-            z.pos.x == x && z.pos.y == y
-        }
+        let zombiesHere = vm.zombies.filter { $0.pos.x == x && $0.pos.y == y }
         let zombieIdsHere = zombiesHere.map { $0.id }
 
-        let selectedZombieId = vm.selectedZombieId
-        let isTargetZombie = selectedZombieId != nil && zombieIdsHere.contains(where: { $0 == selectedZombieId })
+        let npcsHere = vm.npcs.filter { $0.pos.x == x && $0.pos.y == y }
+
+        let otherPlayersHere = vm.players.filter { p in
+            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
+        }
+        let humanIdsHere = otherPlayersHere.map { $0.userId } + npcsHere.map { $0.id }
+
+        let itemsHere = vm.items.filter { $0.pos.x == x && $0.pos.y == y }
+
+        let selectedEntityId = vm.selectedEntityId
+
+        let isTargetSelectedEntity: Bool = {
+            guard let id = selectedEntityId, let kind = vm.interactionKind else { return false }
+            switch kind {
+            case .zombie:
+                return zombieIdsHere.contains(id)
+            case .human:
+                return humanIdsHere.contains(id)
+            case .item:
+                return itemsHere.contains(where: { $0.id == id })
+            case .tile:
+                return false
+            }
+        }()
 
         let building = vm.buildingAt(x: x, y: y)
 
@@ -252,11 +252,6 @@ struct GridView: View {
             tileLabel = ""
         }
 
-        let otherPlayersHere = vm.players.filter { p in
-            p.userId != vm.uid && p.pos?.x == x && p.pos?.y == y
-        }
-        let humanIds = otherPlayersHere.map { $0.userId }
-
         let hasZombie = !zombiesHere.isEmpty
         let hitTick = vm.zombieHitTick
 
@@ -266,7 +261,7 @@ struct GridView: View {
             y: y,
             isMe: isMe,
             isHighlighted: isHighlighted,
-            isTargetZombie: isTargetZombie,
+            isTargetSelectedEntity: isTargetSelectedEntity,
             building: building,
             tileSize: tileSize,
             buildingColor: vm.buildingColor(for: building),
@@ -274,13 +269,13 @@ struct GridView: View {
             tileLabel: tileLabel,
             hasZombie: hasZombie,
             zombieIds: zombieIdsHere,
+            humanIds: humanIdsHere,
+            selectedEntityId: selectedEntityId,
             zombieCount: zombiesHere.count,
             otherPlayerCount: otherPlayersHere.count,
-            humanCount: otherPlayersHere.count,
-            hitTick: hitTick,
-            selectedZombieIdOnTile: selectedZombieId,
-            humanIds: humanIds,
-            selectedHumanIdOnTile: vm.selectedHumanId
+            humanCount: humanIdsHere.count,
+            itemCount: itemsHere.count,
+            hitTick: hitTick
         )
     }
 }
@@ -291,7 +286,7 @@ private struct GridTileViewModel {
     let y: Int
     let isMe: Bool
     let isHighlighted: Bool
-    let isTargetZombie: Bool
+    let isTargetSelectedEntity: Bool
     let building: GameVM.Building?
     let tileSize: CGFloat
     let buildingColor: Color?
@@ -299,11 +294,11 @@ private struct GridTileViewModel {
     let tileLabel: String
     let hasZombie: Bool
     let zombieIds: [String]
+    let humanIds: [String]
+    let selectedEntityId: String?
     let zombieCount: Int
     let otherPlayerCount: Int
     let humanCount: Int
+    let itemCount: Int
     let hitTick: Int
-    let selectedZombieIdOnTile: String?
-    let humanIds: [String]
-    let selectedHumanIdOnTile: String?
 }

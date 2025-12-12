@@ -7,42 +7,39 @@
 
 import SwiftUI
 
-// MARK: - Grid Cell
-
 struct GridCellView: View {
     let x: Int
     let y: Int
     let isMe: Bool
     let isHighlighted: Bool
-    /// Whether *any* selected zombie is on this tile (tile-level info from GridView).
-    let isTargetZombie: Bool
+
+    /// Whether the currently selected entity is on this tile (for hit animation trigger).
+    let isTargetSelectedEntity: Bool
     let hitTick: Int
+
     let building: GameVM.Building?
     let cellSize: CGFloat
     let buildingColor: Color?
     let tileColor: Color?
     let tileLabel: String
-    let hasZombie: Bool
-    /// Concrete zombie ids on this tile, ordered to match the emoji row.
-    let zombieIds: [String]
-    /// Currently selected zombie id (if any), used to highlight a single emoji.
-    let selectedZombieId: String?
 
-    /// Concrete human ids (players/NPCs) on this tile.
+    let hasZombie: Bool
+    let zombieIds: [String]
     let humanIds: [String]
-    /// Currently selected human id (if any).
-    let selectedHumanId: String?
+
+    /// Single selected entity id (zombie/human/item) for highlight only.
+    let selectedEntityId: String?
 
     var zombieCount: Int
     var otherPlayerCount: Int
     var humanCount: Int
     var itemCount: Int
+
     let onTileTap: (() -> Void)?
-    /// Called with the tapped zombie emoji index (0..shown-1).
     let onZombieTap: ((Int) -> Void)?
-    /// Called with the tapped human id.
     let onHumanTap: ((String) -> Void)?
     let onItemTap: (() -> Void)?
+
     @State private var isHitAnimating = false
 
     init(
@@ -50,7 +47,7 @@ struct GridCellView: View {
         y: Int,
         isMe: Bool,
         isHighlighted: Bool,
-        isTargetZombie: Bool,
+        isTargetSelectedEntity: Bool,
         hitTick: Int,
         building: GameVM.Building?,
         cellSize: CGFloat,
@@ -59,9 +56,8 @@ struct GridCellView: View {
         tileLabel: String,
         hasZombie: Bool,
         zombieIds: [String] = [],
-        selectedZombieId: String? = nil,
         humanIds: [String] = [],
-        selectedHumanId: String? = nil,
+        selectedEntityId: String? = nil,
         zombieCount: Int = 0,
         otherPlayerCount: Int = 0,
         humanCount: Int = 0,
@@ -75,7 +71,7 @@ struct GridCellView: View {
         self.y = y
         self.isMe = isMe
         self.isHighlighted = isHighlighted
-        self.isTargetZombie = isTargetZombie
+        self.isTargetSelectedEntity = isTargetSelectedEntity
         self.hitTick = hitTick
         self.building = building
         self.cellSize = cellSize
@@ -84,9 +80,8 @@ struct GridCellView: View {
         self.tileLabel = tileLabel
         self.hasZombie = hasZombie
         self.zombieIds = zombieIds
-        self.selectedZombieId = selectedZombieId
         self.humanIds = humanIds
-        self.selectedHumanId = selectedHumanId
+        self.selectedEntityId = selectedEntityId
         self.zombieCount = zombieCount
         self.otherPlayerCount = otherPlayerCount
         self.humanCount = humanCount
@@ -112,12 +107,9 @@ struct GridCellView: View {
         }
         .frame(width: cellSize, height: cellSize)
         .contentShape(Rectangle())
-        .onTapGesture {
-            onTileTap?()
-        }
+        .onTapGesture { onTileTap?() }
         .onChange(of: hitTick) { _ in
-            // Only animate if this tile currently contains the selected zombie.
-            guard isTargetZombie else { return }
+            guard isTargetSelectedEntity else { return }
             isHitAnimating = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 isHitAnimating = false
@@ -134,9 +126,13 @@ private extension GridCellView {
 
     var titleRow: some View {
         Text(tileLabel)
-            .font(.system(size: min(cellSize * 0.35, 16),
-                          weight: .bold,
-                          design: .monospaced))
+            .font(
+                .system(
+                    size: min(cellSize * 0.35, 16),
+                    weight: .bold,
+                    design: .monospaced
+                )
+            )
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             .frame(maxWidth: .infinity)
@@ -149,7 +145,9 @@ private extension GridCellView {
                 let shown = min(effectiveZombieCount, 3)
 
                 ForEach(0..<shown, id: \.self) { index in
-                    let isSelectedEmoji = (index < zombieIds.count && selectedZombieId == zombieIds[index])
+                    let isSelectedEmoji =
+                        index < zombieIds.count &&
+                        selectedEntityId == zombieIds[index]
 
                     Text("🧟")
                         .font(.system(size: min(cellSize * 0.6, 28)))
@@ -162,18 +160,17 @@ private extension GridCellView {
                                 )
                         )
                         .scaleEffect(isSelectedEmoji && isHitAnimating ? 1.15 : 1.0)
-                        .animation(.spring(response: 0.18, dampingFraction: 0.35), value: isHitAnimating)
-                        .onTapGesture {
-                            onZombieTap?(index)
-                        }
+                        .animation(
+                            .spring(response: 0.18, dampingFraction: 0.35),
+                            value: isHitAnimating
+                        )
+                        .onTapGesture { onZombieTap?(index) }
                 }
 
                 if effectiveZombieCount > shown {
                     Text("+\(effectiveZombieCount - shown)")
                         .font(.system(size: min(cellSize * 0.45, 16)))
-                        .onTapGesture {
-                            onZombieTap?(0)
-                        }
+                        .onTapGesture { onZombieTap?(0) }
                 }
 
                 Spacer(minLength: 0)
@@ -189,7 +186,9 @@ private extension GridCellView {
                 let shown = min(totalHumans, 3)
 
                 ForEach(0..<shown, id: \.self) { index in
-                    let isSelected = (index < humanIds.count && selectedHumanId == humanIds[index])
+                    let isSelected =
+                        index < humanIds.count &&
+                        selectedEntityId == humanIds[index]
 
                     Text("🙂")
                         .font(.system(size: min(cellSize * 0.3, 18)))
@@ -229,9 +228,7 @@ private extension GridCellView {
             HStack(spacing: 2) {
                 Text("🎒\(itemCount)")
                     .font(.system(size: min(cellSize * 0.3, 12)))
-                    .onTapGesture {
-                        onItemTap?()
-                    }
+                    .onTapGesture { onItemTap?() }
                 Spacer(minLength: 0)
             }
         }
@@ -241,9 +238,13 @@ private extension GridCellView {
         HStack(spacing: 2) {
             Spacer(minLength: 0)
             Text("\(x),\(y)")
-                .font(.system(size: min(cellSize * 0.25, 10),
-                              weight: .regular,
-                              design: .monospaced))
+                .font(
+                    .system(
+                        size: min(cellSize * 0.25, 10),
+                        weight: .regular,
+                        design: .monospaced
+                    )
+                )
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }

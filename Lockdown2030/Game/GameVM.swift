@@ -69,19 +69,18 @@ final class GameVM: ObservableObject {
   @Published var tileMeta: [String: TileMeta] = [:]
 
   @Published var zombies: [Zombie] = []
+  @Published var npcs: [Npc] = []
+  @Published var items: [WorldItem] = []
   @Published var lastEventMessage: String? = nil
 
   /// Unified message log for system/combat/radio messages shown in the Radio / Chat UI.
   @Published var messageLog: [GameMessage] = []
 
-  /// Bumps whenever an attack successfully hits a zombie; used as a simple animation trigger.
+  /// Bumps whenever an attack successfully hits a target entity; used as a simple animation trigger.
   @Published var zombieHitTick: Int = 0
 
-  /// Currently selected zombie (by id), used for per-zombie selection & UI.
-  @Published var selectedZombieId: String? = nil
-
-  /// Currently selected human (by id), used for per-human selection & UI.
-  @Published var selectedHumanId: String? = nil
+  /// Single selected entity id (zombie / human / item), tied to `interactionKind`.
+  @Published var selectedEntityId: String? = nil
 
   @Published var mapId: String = ""
 
@@ -91,6 +90,8 @@ final class GameVM: ObservableObject {
   var gameListener: ListenerRegistration?
   var zombieListener: ListenerRegistration?
   var playersListener: ListenerRegistration?
+  var npcsListener: ListenerRegistration?
+  var itemsListener: ListenerRegistration?
 
   let db = Firestore.firestore()
   let gameId = "lockdown2030"
@@ -138,7 +139,7 @@ final class GameVM: ObservableObject {
 
   /// Currently selected zombie object, if any.
   var selectedZombie: Zombie? {
-    guard let id = selectedZombieId else { return nil }
+    guard interactionKind == .zombie, let id = selectedEntityId else { return nil }
     return zombies.first(where: { $0.id == id })
   }
 

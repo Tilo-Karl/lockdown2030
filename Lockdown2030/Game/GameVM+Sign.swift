@@ -37,5 +37,8 @@ extension GameVM {
 
     // Start listening to all players for this game
     startPlayersListener()
+      
+    startNpcsListener()
+    startItemsListener()
   }
 }
