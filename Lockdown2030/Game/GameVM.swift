@@ -2,7 +2,7 @@
 //  GameVM.swift
 //  Lockdown2030
 //
-//  Created by Tilo Delau on 2025-11-08.
+//  Fresh canonical state for Entities-based world (players + humans + zombies + items).
 //
 
 import SwiftUI
@@ -12,140 +12,127 @@ import FirebaseAuth
 import FirebaseFirestore
 import os.log
 
+@MainActor
 final class GameVM: ObservableObject {
 
-  // MARK: - Tile meta (from Firestore map meta)
+    // MARK: - Tile meta
 
-  struct TileMeta {
-    let label: String
-    let colorHex: String
-    let blocksMovement: Bool
-    let blocksVision: Bool
-    let playerSpawnAllowed: Bool
-    let zombieSpawnAllowed: Bool
-    let moveCost: Int?
-  }
-
-  // MARK: - Player state (mirrored from Firestore player doc)
-  @Published var myPlayer: PlayerDoc? = nil
-  /// All players in the current game (including me, if subscribed).
-  @Published var players: [PlayerDoc] = []
-
-  // MARK: - Game state
-  @Published var uid: String = ""
-  @Published var gameName: String = ""
-  @Published var gridW: Int = 0
-  @Published var gridH: Int = 0
-  @Published var status: String = ""
-  @Published var myPos: Pos? = nil
-  @Published var focusPos: Pos? = nil
-  /// 0 = only your tile, 1 = adjacent tiles, etc.
-  @Published var maxViewRadius: Int = 1
-
-  // MARK: - Interaction state (what the player has selected)
-
-  enum InteractionKind {
-    case tile
-    case zombie
-    case human
-    case item
-  }
-
-  /// Position the user is currently interacting with (tap target).
-  @Published var interactionPos: Pos? = nil
-
-  /// What kind of thing is selected at `interactionPos`.
-  @Published var interactionKind: InteractionKind? = nil
-
-  @Published var buildings: [Building] = []
-  @Published var isInsideBuilding: Bool = false
-  @Published var activeBuildingId: String? = nil
-  @Published var buildingColors: [String: String] = [:]
-
-  /// Canonical tile rows from mapMeta.terrain (array of strings).
-  @Published var tileRows: [String] = []
-
-  /// Per-tile metadata (labels, colors, movement rules, etc.) keyed by tile code.
-  @Published var tileMeta: [String: TileMeta] = [:]
-
-  @Published var zombies: [Zombie] = []
-  @Published var npcs: [Npc] = []
-  @Published var items: [WorldItem] = []
-  @Published var lastEventMessage: String? = nil
-
-  /// Unified message log for system/combat/radio messages shown in the Radio / Chat UI.
-  @Published var messageLog: [GameMessage] = []
-
-  /// Bumps whenever an attack successfully hits a target entity; used as a simple animation trigger.
-  @Published var zombieHitTick: Int = 0
-
-  /// Single selected entity id (zombie / human / item), tied to `interactionKind`.
-  @Published var selectedEntityId: String? = nil
-
-  @Published var mapId: String = ""
-
-  // MARK: - Listeners / Firestore
-
-  var myPlayerListener: ListenerRegistration?
-  var gameListener: ListenerRegistration?
-  var zombieListener: ListenerRegistration?
-  var playersListener: ListenerRegistration?
-  var npcsListener: ListenerRegistration?
-  var itemsListener: ListenerRegistration?
-
-  let db = Firestore.firestore()
-  let gameId = "lockdown2030"
-  let log = Logger(subsystem: "Lockdown2030", category: "GameVM")
-
-  init() {
-    Task { await signInAndLoad() }
-  }
-
-  func setLastEventMessage(_ message: String) {
-    // Legacy helper: update the simple string + log.
-    // New code should call pushSystem / pushCombat / pushRadio instead.
-    DispatchQueue.main.async {
-      self.lastEventMessage = message
-      self.log.info("Event: \(message, privacy: .public)")
+    struct TileMeta {
+        let label: String
+        let colorHex: String
+        let blocksMovement: Bool
+        let blocksVision: Bool
+        let playerSpawnAllowed: Bool
+        let zombieSpawnAllowed: Bool
+        let moveCost: Int?
     }
-  }
 
-  // MARK: - Tile snapshot helpers
+    // MARK: - Game state
 
-  /// Lightweight snapshot of everything interesting on a single tile.
-  struct TileSnapshot {
-    let pos: Pos
-    /// Raw tile code (e.g. "0" = ROAD, "5" = WATER).
-    let tileCode: String
-    let building: Building?
-    let zombies: [Zombie]
-  }
+    @Published var uid: String = ""
+    @Published var gameName: String = ""
+    @Published var gridW: Int = 0
+    @Published var gridH: Int = 0
+    @Published var status: String = ""
+    @Published var myPos: Pos? = nil
+    @Published var focusPos: Pos? = nil
+    /// 0 = only your tile, 1 = adjacent tiles, etc.
+    @Published var maxViewRadius: Int = 1
+    @Published var mapId: String = ""
 
-  /// Current tile the player is standing on, if we know their position.
-  var tileHere: TileSnapshot? {
-    guard let pos = myPos else { return nil }
-    return tileSnapshot(at: pos)
-  }
+    // MARK: - Map/meta
 
-  /// Build a unified view of a tile at a given position.
-  func tileSnapshot(at pos: Pos) -> TileSnapshot {
-    let tileCode = tileCodeAt(x: pos.x, y: pos.y) ?? "0"
-    let b = buildingAt(x: pos.x, y: pos.y)
-    let zs = zombies.filter { z in
-      z.pos.x == pos.x && z.pos.y == pos.y
+    @Published var buildings: [Building] = []
+    @Published var isInsideBuilding: Bool = false
+    @Published var activeBuildingId: String? = nil
+    @Published var buildingColors: [String: String] = [:]
+    @Published var tileRows: [String] = []
+    @Published var tileMeta: [String: TileMeta] = [:]
+
+    // MARK: - World entities (canonical)
+
+    /// players = actor docs controlled by users (collection: games/{gameId}/players)
+    @Published var players: [Entity] = []
+
+    /// humans = non-player humans (collection: games/{gameId}/humans)
+    @Published var humans: [Entity] = []
+
+    /// zombies = zombies (collection: games/{gameId}/zombies)
+    @Published var zombies: [Entity] = []
+
+    /// items = world items (collection: games/{gameId}/items)
+    @Published var items: [Entity] = []
+
+    /// My own actor doc from `players/{uid}`.
+    @Published var myActor: Entity? = nil
+
+    // MARK: - Interaction / selection
+
+    enum InteractionKind {
+        case tile
+        case zombie
+        case human
+        case item
     }
-    return TileSnapshot(pos: pos, tileCode: tileCode, building: b, zombies: zs)
-  }
 
-  /// Currently selected zombie object, if any.
-  var selectedZombie: Zombie? {
-    guard interactionKind == .zombie, let id = selectedEntityId else { return nil }
-    return zombies.first(where: { $0.id == id })
-  }
+    @Published var interactionPos: Pos? = nil
+    @Published var interactionKind: InteractionKind? = nil
+    @Published var selectedEntityId: String? = nil
 
-  /// Convenience: meta for the tile at a given position, if available.
-  func tileMeta(at pos: Pos) -> TileMeta? {
-    guard let code = tileCodeAt(x: pos.x, y: pos.y) else { return nil }
-    return tileMeta[code]
-  }
+    // MARK: - UI messages
+
+    struct GameMessage: Identifiable, Equatable {
+        enum Kind { case system, combat, radio }
+        let id = UUID().uuidString
+        let kind: Kind
+        let text: String
+        let at: Date = Date()
+    }
+
+    @Published var messageLog: [GameMessage] = []
+    @Published var zombieHitTick: Int = 0
+
+    // MARK: - Firestore
+
+    let db = Firestore.firestore()
+    let gameId = "lockdown2030"
+    let log = Logger(subsystem: "Lockdown2030", category: "GameVM")
+
+    var myPlayerListener: ListenerRegistration?
+    var gameListener: ListenerRegistration?
+    var playersListener: ListenerRegistration?
+    var humansListener: ListenerRegistration?
+    var zombiesListener: ListenerRegistration?
+    var itemsListener: ListenerRegistration?
+
+    init() {
+        Task { await signInAndLoad() }
+    }
+
+    // MARK: - Convenience lookups
+
+    var allEntities: [Entity] { players + humans + zombies + items }
+
+    var entitiesById: [String: Entity] {
+        var dict: [String: Entity] = [:]
+        for e in allEntities { dict[e.id] = e }
+        return dict
+    }
+
+    var selectedEntity: Entity? {
+        guard let id = selectedEntityId else { return nil }
+        return entitiesById[id]
+    }
+
+    // MARK: - Header stats (no legacy hp/ap)
+
+    var myHpText: String {
+        guard let a = myActor?.actor, let hp = a.currentHp else { return "—" }
+        return "\(hp)"
+    }
+
+    var myApText: String {
+        guard let a = myActor?.actor, let ap = a.currentAp else { return "—" }
+        return "\(ap)"
+    }
 }

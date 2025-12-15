@@ -8,15 +8,15 @@
 import Foundation
 
 enum CloudAPI {
-    // Engine base (update if your service URL changes)
     private static let baseEngine = "https://ld2030-52812703983.europe-west4.run.app/api/ld2030/v1"
 
-    static let join        = "\(baseEngine)/join-game"
-    static let move        = "\(baseEngine)/move-player"
+    static let join         = "\(baseEngine)/join-game"
+    static let move         = "\(baseEngine)/move-player"
     static let attackEntity = "\(baseEngine)/attack-entity"
-    static let tickGame    = "\(baseEngine)/tick-game"
+    static let tickGame     = "\(baseEngine)/tick-game"
+    static let equipItem    = "\(baseEngine)/equip-item"
+    static let unequipItem  = "\(baseEngine)/unequip-item"
 
-    /// POST JSON helper with typed request/response
     static func postJSON<T: Encodable, R: Decodable>(to url: String, body: T) async throws -> R {
         var req = URLRequest(url: URL(string: url)!)
         req.httpMethod = "POST"
@@ -72,25 +72,59 @@ struct EngineMoveRes: Codable {
     let reason: String?
 }
 
-// Unified attack-entity request
+// Attack (id-only)
 struct EngineAttackEntityReq: Codable {
     let gameId: String?
-    let uid: String          // ← was attackerUid
+    let uid: String
     let targetId: String
-    /// "player", "zombie", "human", "npc", "item", "object"
-    let targetType: String
 }
 
-// Unified attack-entity response (matches current backend shape)
 struct EngineAttackEntityRes: Codable {
+    struct ActorSnap: Codable {
+        let id: String?
+        let type: String?
+        let kind: String?
+        let isPlayer: Bool?
+        let currentHp: Int?
+        let currentAp: Int?
+    }
+
+    struct TargetSnap: Codable {
+        let id: String?
+        let type: String?
+        let kind: String?
+        let currentHp: Int?
+        let currentDurability: Int?
+        let alive: Bool?
+        let broken: Bool?
+    }
+
     let ok: Bool
-    let attackerUid: String?
-    let targetId: String?
-    let targetType: String?
-    let hit: Bool?
-    let damage: Int?
-    let hpAfter: Int?
-    let dead: Bool?
+    let attacker: ActorSnap?
+    let target: TargetSnap?
+    let error: String?
+}
+
+// Equip / Unequip
+struct EngineEquipItemReq: Codable {
+    let gameId: String?
+    let uid: String
+    let itemId: String
+}
+
+struct EngineEquipItemRes: Codable {
+    let ok: Bool
+    let error: String?
+}
+
+struct EngineUnequipItemReq: Codable {
+    let gameId: String?
+    let uid: String
+    let itemId: String
+}
+
+struct EngineUnequipItemRes: Codable {
+    let ok: Bool
     let error: String?
 }
 

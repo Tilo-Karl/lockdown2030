@@ -2,27 +2,23 @@
 //  GameVM+Engine+Attack.swift
 //  Lockdown2030
 //
-//  Created by Tilo Delau on 2025-11-28.
+//  Engine attack call + combat messaging.
+//  IMPORTANT: targetType must be "zombie" | "player" | "human" | "item".
 //
 
 import Foundation
 
 extension GameVM {
 
-    /// Unified engine attack: player (you) vs any target entity.
-    /// `targetType` must match backend expectation: "zombie", "player", "item", etc.
     @MainActor
     func attackEntity(targetId: String, targetType: String) async {
-        guard !uid.isEmpty else {
-            print("AttackEntity error: missing uid")
-            return
-        }
+        guard !uid.isEmpty else { return }
 
+        // New backend request is id-only (backend resolves type/kind by reading docs)
         let req = EngineAttackEntityReq(
             gameId: gameId,
-            uid: uid,               // ← was attackerUid: uid
-            targetId: targetId,
-            targetType: targetType
+            uid: uid,
+            targetId: targetId
         )
 
         do {
@@ -30,38 +26,37 @@ extension GameVM {
                 to: CloudAPI.attackEntity,
                 body: req
             )
-            // ... rest of your method unchanged ...
 
             if res.ok {
-                let typeLabel: String
-                switch targetType {
-                case "zombie": typeLabel = "zombie"
-                case "player": typeLabel = "human"
-                default:       typeLabel = "target"
-                }
+                // Prefer server-reported type; fall back to the caller-provided targetType.
+                let serverType = (res.target?.type ?? targetType).lowercased()
+                let typeLabel = serverType.isEmpty ? "target" : serverType
 
                 var parts: [String] = []
 
-                if res.hit == true {
-                    if let dmg = res.damage {
-                        if let hpAfter = res.hpAfter {
-                            parts.append("You hit the \(typeLabel) for \(dmg). HP is now \(hpAfter).")
-                        } else {
-                            parts.append("You hit the \(typeLabel) for \(dmg).")
-                        }
+                if serverType == "item" {
+                    if let dur = res.target?.currentDurability {
+                        parts.append("You hit the \(typeLabel). Durability is now \(dur).")
                     } else {
                         parts.append("You hit the \(typeLabel).")
                     }
-                } else {
-                    parts.append("Your attack missed the \(typeLabel).")
-                }
 
-                if res.dead == true {
-                    parts.append("The \(typeLabel) dies.")
+                    if res.target?.broken == true {
+                        parts.append("The \(typeLabel) breaks.")
+                    }
+                } else {
+                    if let hp = res.target?.currentHp {
+                        parts.append("You hit the \(typeLabel). HP is now \(hp).")
+                    } else {
+                        parts.append("You hit the \(typeLabel).")
+                    }
+
+                    if res.target?.alive == false {
+                        parts.append("The \(typeLabel) dies.")
+                    }
                 }
 
                 self.pushCombat(parts.joined(separator: " "))
-
             } else {
                 let reason = res.error ?? "unknown"
                 let msg = String(format: GameStrings.combatAttackFailedReason, reason)
@@ -69,7 +64,6 @@ extension GameVM {
             }
 
         } catch {
-            print("AttackEntity error:", error)
             self.pushCombat(GameStrings.combatAttackFailedNetwork)
         }
     }

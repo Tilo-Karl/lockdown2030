@@ -2,80 +2,50 @@
 //  GameVM+Firestore.swift
 //  Lockdown2030
 //
-//  Created by Tilo Delau on 2025-11-19.
+//  Firestore listeners + decoding for Entity/ActorComponent/ItemComponent.
+//  Canonical collections: players, humans, zombies, items.
 //
 
 import Foundation
 import FirebaseFirestore
-import os.log
 
 extension GameVM {
 
-    // MARK: - Firestore helpers (centralized entry points)
+    // MARK: - Collection refs
 
-    /// games/{gameId}
     var gameDocRef: DocumentReference? {
         guard !gameId.isEmpty else { return nil }
         return db.collection("games").document(gameId)
     }
 
-    /// games/{gameId}/players
-    var playersColRef: CollectionReference? {
-        gameDocRef?.collection("players")
-    }
+    var playersColRef: CollectionReference? { gameDocRef?.collection("players") }
+    var humansColRef: CollectionReference?  { gameDocRef?.collection("humans") }
+    var zombiesColRef: CollectionReference? { gameDocRef?.collection("zombies") }
+    var itemsColRef: CollectionReference?   { gameDocRef?.collection("items") }
 
-    /// games/{gameId}/zombies
-    var zombiesColRef: CollectionReference? {
-        gameDocRef?.collection("zombies")
-    }
-    
-    /// games/{gameId}/npcs
-    var npcsColRef: CollectionReference? {
-        gameDocRef?.collection("npcs")
-    }
+    // MARK: - Game doc listener (map/meta)
 
-    /// games/{gameId}/items
-    var itemsColRef: CollectionReference? {
-        gameDocRef?.collection("items")
-    }
-
-    // MARK: - Game document listener (map + meta)
-
-    /// Listen to games/{gameId} and fan out into grid, mapId, tileRows, tileMeta, buildings, palettes.
-    @MainActor
     func startGameDocListener() {
         guard let ref = gameDocRef else { return }
-
-        // Tear down any old listener
         gameListener?.remove()
 
         gameListener = ref.addSnapshotListener { [weak self] snap, err in
             guard let self else { return }
-
             if let err = err {
-                print("Game doc listener ERROR: \(err.localizedDescription)")
+                print("Game doc listener ERROR:", err.localizedDescription)
                 return
             }
-
-            guard let data = snap?.data() else {
-                return
-            }
-
-            DispatchQueue.main.async {
-                self.applyGameSnapshot(data)
-            }
+            guard let data = snap?.data() else { return }
+            Task { @MainActor in self.applyGameSnapshot(data) }
         }
     }
 
-    @MainActor
     func stopGameDocListener() {
         gameListener?.remove()
         gameListener = nil
     }
 
-    /// Apply one snapshot of games/{gameId} to the view model.
     private func applyGameSnapshot(_ data: [String: Any]) {
-        // gridsize
         if let grid = data["gridsize"] as? [String: Any],
            let w = grid["w"] as? Int,
            let h = grid["h"] as? Int {
@@ -83,25 +53,24 @@ extension GameVM {
             gridH = h
         }
 
-        // mapId
+        if let name = data["name"] as? String {
+            gameName = name
+        }
+
         if let mid = data["mapId"] as? String {
             mapId = mid
         }
 
-        // mapMeta (terrain codes, tileMeta, buildings, palettes…)
         if let mapMeta = data["mapMeta"] as? [String: Any] {
             applyMapMeta(mapMeta)
         }
     }
 
-    /// Parse and apply the mapMeta section from the game document.
     private func applyMapMeta(_ mapMeta: [String: Any]) {
-        // --- Tile rows (codes) ---
         if let terrainArr = mapMeta["terrain"] as? [String] {
             tileRows = terrainArr
         }
 
-        // --- Tile meta (code → TileMeta) ---
         if let rawTileMeta = mapMeta["tileMeta"] as? [String: Any] {
             var dict: [String: TileMeta] = [:]
 
@@ -111,292 +80,242 @@ extension GameVM {
                       let colorHex = metaDict["colorHex"] as? String
                 else { continue }
 
-                let blocksMovement     = metaDict["blocksMovement"] as? Bool ?? false
-                let blocksVision       = metaDict["blocksVision"] as? Bool ?? false
-                let playerSpawnAllowed = metaDict["playerSpawnAllowed"] as? Bool ?? true
-                let zombieSpawnAllowed = metaDict["zombieSpawnAllowed"] as? Bool ?? true
-                let moveCost           = metaDict["moveCost"] as? Int ?? 1
-
                 dict[code] = TileMeta(
                     label: label,
                     colorHex: colorHex,
-                    blocksMovement: blocksMovement,
-                    blocksVision: blocksVision,
-                    playerSpawnAllowed: playerSpawnAllowed,
-                    zombieSpawnAllowed: zombieSpawnAllowed,
-                    moveCost: moveCost
+                    blocksMovement: metaDict["blocksMovement"] as? Bool ?? false,
+                    blocksVision: metaDict["blocksVision"] as? Bool ?? false,
+                    playerSpawnAllowed: metaDict["playerSpawnAllowed"] as? Bool ?? true,
+                    zombieSpawnAllowed: metaDict["zombieSpawnAllowed"] as? Bool ?? true,
+                    moveCost: metaDict["moveCost"] as? Int
                 )
             }
 
-            // Debug logging so we can see what came from Firestore
-            if dict.isEmpty {
-                log.info("tileMeta from mapMeta is EMPTY")
-            } else {
-                let codes = Array(dict.keys).sorted()
-                log.info("tileMeta from mapMeta: \(dict.count, privacy: .public) entries, codes: \(codes, privacy: .public)")
-            }
-
-            if !dict.isEmpty {
-                tileMeta = dict
-            }
+            if !dict.isEmpty { tileMeta = dict }
         }
 
-        // --- Buildings array (same shape you already use in parseBuildingsArray) ---
         if let buildingsArr = mapMeta["buildings"] as? [[String: Any]] {
             buildings = parseBuildingsArray(buildingsArr)
         }
 
-        // --- Building palette (type → hex) ---
         if let palette = mapMeta["buildingPalette"] as? [String: String] {
             buildingColors = palette
         } else if let anyPalette = mapMeta["buildingPalette"] as? [String: Any] {
             var normalized: [String: String] = [:]
-            for (key, value) in anyPalette {
-                if let s = value as? String {
-                    normalized[key] = s
-                }
+            for (k, v) in anyPalette {
+                if let s = v as? String { normalized[k] = s }
             }
             buildingColors = normalized
         }
     }
 
-    // MARK: - Items listener (world items on tiles)
+    // MARK: - Decode helpers
 
-    @MainActor
-    func startItemsListener() {
-        guard let itemsColRef else { return }
+    private func decodePos(_ data: [String: Any]) -> Pos? {
+        guard let p = data["pos"] as? [String: Any],
+              let x = p["x"] as? Int,
+              let y = p["y"] as? Int else { return nil }
+        return Pos(x: x, y: y)
+    }
 
-        // Tear down any previous listener
-        itemsListener?.remove()
+    private func decodeDate(_ v: Any?) -> Date? {
+        (v as? Timestamp)?.dateValue()
+    }
 
-        itemsListener = itemsColRef.addSnapshotListener { [weak self] snap, err in
-            guard let self else { return }
+    private func decodeInt64(_ v: Any?) -> Int64? {
+        if let n = v as? Int64 { return n }
+        if let n = v as? Int { return Int64(n) }
+        if let n = v as? Double { return Int64(n) }
+        return nil
+    }
 
-            if let err = err {
-                print("Items listener ERROR: \(err.localizedDescription)")
-                return
-            }
+    private func decodeEquipment(_ data: [String: Any]) -> Equipment? {
+        guard let eq = data["equipment"] as? [String: Any] else { return nil }
 
-            let docs = snap?.documents ?? []
-
-            let mapped: [WorldItem] = docs.compactMap { doc in
-                let data = doc.data()
-
-                guard
-                    let type = data["type"] as? String,
-                    let kind = data["kind"] as? String,
-                    let posDict = data["pos"] as? [String: Any],
-                    let x = posDict["x"] as? Int,
-                    let y = posDict["y"] as? Int
-                else {
-                    return nil
-                }
-
-                let hp     = data["hp"] as? Int
-                let weight = data["weight"] as? Int
-                let armor  = data["armor"] as? Int
-                let damage = data["damage"] as? Int
-
-                return WorldItem(
-                    id: doc.documentID,
-                    type: type,
-                    kind: kind,
-                    hp: hp,
-                    weight: weight,
-                    armor: armor,
-                    damage: damage,
-                    pos: Pos(x: x, y: y)
-                )
-            }
-
-            DispatchQueue.main.async {
-                self.items = mapped
-            }
+        var body: Equipment.Body? = nil
+        if let b = eq["body"] as? [String: Any] {
+            body = Equipment.Body(
+                under: b["under"] as? String,
+                outer: b["outer"] as? String
+            )
         }
-    }
 
-    @MainActor
-    func stopItemsListener() {
-        itemsListener?.remove()
-        itemsListener = nil
-    }
-    
-    // MARK: - NPCs listener (human NPCs: civilians / raiders / traders)
-
-    /// Listen to games/{gameId}/npcs and keep `npcs` in sync.
-    @MainActor
-    func startNpcsListener() {
-        guard let npcsColRef else { return }
-
-        // Tear down any previous listener
-        npcsListener?.remove()
-
-        npcsListener = npcsColRef.addSnapshotListener { [weak self] snap, err in
-            guard let self else { return }
-
-            if let err = err {
-                print("NPCs listener ERROR: \(err.localizedDescription)")
-                return
-            }
-
-            let docs = snap?.documents ?? []
-
-            let mapped: [Npc] = docs.compactMap { doc in
-                let data = doc.data()
-
-                guard
-                    let type = data["type"] as? String,
-                    let kind = data["kind"] as? String,
-                    let hp = data["hp"] as? Int,
-                    let alive = data["alive"] as? Bool,
-                    let posDict = data["pos"] as? [String: Any],
-                    let x = posDict["x"] as? Int,
-                    let y = posDict["y"] as? Int
-                else {
-                    return nil
-                }
-
-                let faction = data["faction"] as? String
-
-                return Npc(
-                    id: doc.documentID,
-                    type: type,
-                    kind: kind,
-                    faction: faction,
-                    hp: hp,
-                    alive: alive,
-                    pos: Pos(x: x, y: y)
-                )
-            }
-
-            DispatchQueue.main.async {
-                self.npcs = mapped
-            }
+        var weapon: Equipment.Weapon? = nil
+        if let w = eq["weapon"] as? [String: Any] {
+            weapon = Equipment.Weapon(
+                main: w["main"] as? String,
+                off:  w["off"] as? String
+            )
         }
+
+        if body == nil && weapon == nil { return nil }
+        return Equipment(body: body, weapon: weapon)
     }
 
-    @MainActor
-    func stopNpcsListener() {
-        npcsListener?.remove()
-        npcsListener = nil
-    }
-    
-    // MARK: - Zombies listener
+    private func decodeActorComponent(_ data: [String: Any]) -> ActorComponent? {
+        // Actor component exists for HUMAN/ZOMBIE docs. All fields optional except isPlayer.
+        // If there are zero actor-ish fields AND isPlayer is missing, treat as not an actor.
+        let hasAnyActorField =
+            data["currentHp"] != nil || data["maxHp"] != nil ||
+            data["currentAp"] != nil || data["maxAp"] != nil ||
+            data["attackDamage"] != nil || data["hitChance"] != nil ||
+            data["moveApCost"] != nil || data["attackApCost"] != nil ||
+            data["faction"] != nil || data["hostileTo"] != nil ||
+            data["equipment"] != nil || data["inventory"] != nil ||
+            data["isPlayer"] != nil
 
-    /// Listen to games/{gameId}/zombies and keep `zombies` in sync.
-    @MainActor
-    func startZombiesListener() {
-        guard let zombiesColRef else { return }
+        guard hasAnyActorField else { return nil }
 
-        // Tear down any previous listener
-        zombieListener?.remove()
+        return ActorComponent(
+            isPlayer: data["isPlayer"] as? Bool ?? false,
 
-        zombieListener = zombiesColRef.addSnapshotListener { [weak self] snap, err in
-            guard let self else { return }
+            currentHp: data["currentHp"] as? Int,
+            maxHp: data["maxHp"] as? Int,
+            currentAp: data["currentAp"] as? Int,
+            maxAp: data["maxAp"] as? Int,
 
-            if let err = err {
-                print("Zombie listener ERROR: \(err.localizedDescription)")
-                return
-            }
+            armor: data["armor"] as? Int,
+            defense: data["defense"] as? Int,
+            attackDamage: data["attackDamage"] as? Int,
+            hitChance: data["hitChance"] as? Double,
+            moveApCost: data["moveApCost"] as? Int,
+            attackApCost: data["attackApCost"] as? Int,
 
-            let docs = snap?.documents ?? []
-            
-            let mapped: [Zombie] = docs.compactMap { doc in
-                let data = doc.data()
-                
-                guard
-                    let type = data["type"] as? String,
-                    let kind = data["kind"] as? String,
-                    let hp = data["hp"] as? Int,
-                    let alive = data["alive"] as? Bool,
-                    let pos = data["pos"] as? [String: Any],
-                    let x = pos["x"] as? Int,
-                    let y = pos["y"] as? Int
-                else {
-                    return nil
-                }
-                
-                return Zombie(
-                    id: doc.documentID,
-                    type: type,
-                    kind: kind,
-                    hp: hp,
-                    alive: alive,
-                    pos: Pos(x: x, y: y)
-                )
-            }
+            faction: data["faction"] as? String,
+            hostileTo: data["hostileTo"] as? [String],
 
-            DispatchQueue.main.async {
-                self.zombies = mapped
-                // Keep the current interaction in sync with updated zombies (clear selection if it moved/died)
-                self.refreshInteractionAfterZombiesUpdate()
-            }
-        }
+            equipment: decodeEquipment(data),
+            inventory: data["inventory"] as? [String]
+        )
     }
 
-    @MainActor
-    func stopZombiesListener() {
-        zombieListener?.remove()
-        zombieListener = nil
+    private func decodeItemComponent(_ data: [String: Any]) -> ItemComponent? {
+        // Item component exists for ITEM docs; fields are optional.
+        // If there's literally nothing item-ish, return nil.
+        let hasAnyItemField =
+            data["durabilityMax"] != nil || data["currentDurability"] != nil ||
+            data["broken"] != nil || data["destructible"] != nil ||
+            data["slot"] != nil || data["layer"] != nil ||
+            data["weight"] != nil || data["value"] != nil ||
+            data["armor"] != nil || data["damage"] != nil || data["range"] != nil
+
+        guard hasAnyItemField else { return nil }
+
+        return ItemComponent(
+            durabilityMax: data["durabilityMax"] as? Int,
+            currentDurability: data["currentDurability"] as? Int,
+            broken: data["broken"] as? Bool,
+            destructible: data["destructible"] as? Bool,
+
+            slot: data["slot"] as? String,
+            layer: data["layer"] as? String,
+
+            weight: data["weight"] as? Int,
+            value: data["value"] as? Int,
+            armor: data["armor"] as? Int,
+            damage: data["damage"] as? Int,
+            range: data["range"] as? Int
+        )
     }
 
-    // MARK: - Players listener (all players in game)
+    private func decodeEntity(doc: QueryDocumentSnapshot, forcedType: EntityType) -> Entity? {
+        // Skip internal marker docs like "_logs"
+        if doc.documentID.hasPrefix("_") { return nil }
 
-    /// Listen to games/{gameId}/players and keep `players` in sync.
-    @MainActor
+        let data = doc.data()
+
+        let kind = (data["kind"] as? String) ?? "DEFAULT"
+        let pos = decodePos(data)
+
+        let actor = decodeActorComponent(data)
+        let item  = decodeItemComponent(data)
+
+        return Entity(
+            id: doc.documentID,
+            type: forcedType,
+            kind: kind,
+            pos: pos,
+            createdAt: decodeDate(data["createdAt"]),
+            updatedAt: decodeDate(data["updatedAt"]),
+            alive: data["alive"] as? Bool,
+            downed: data["downed"] as? Bool,
+            despawnAt: decodeInt64(data["despawnAt"]),
+            actor: actor,
+            item: item
+        )
+    }
+
+    // MARK: - Listeners
+
     func startPlayersListener() {
-        guard let playersColRef else { return }
-
-        // Tear down any previous listener
+        guard let col = playersColRef else { return }
         playersListener?.remove()
 
-        playersListener = playersColRef.addSnapshotListener { [weak self] snap, err in
+        playersListener = col.addSnapshotListener { [weak self] snap, err in
             guard let self else { return }
-
             if let err = err {
-                print("Players listener ERROR: \(err.localizedDescription)")
+                print("Players listener ERROR:", err.localizedDescription)
                 return
             }
-
             let docs = snap?.documents ?? []
-
-            let mapped: [PlayerDoc] = docs.compactMap { doc in
-                let data = doc.data()
-
-                let userId = (data["userId"] as? String) ?? doc.documentID
-                let displayName = data["displayName"] as? String
-
-                var pos: Pos? = nil
-                if let posDict = data["pos"] as? [String: Any],
-                   let x = posDict["x"] as? Int,
-                   let y = posDict["y"] as? Int {
-                    pos = Pos(x: x, y: y)
-                }
-
-                let hp = data["hp"] as? Int
-                let ap = data["ap"] as? Int
-                let alive = data["alive"] as? Bool
-
-                return PlayerDoc(
-                    userId: userId,
-                    displayName: displayName,
-                    pos: pos,
-                    hp: hp,
-                    ap: ap,
-                    alive: alive
-                )
-            }
-
-            DispatchQueue.main.async {
-                self.players = mapped
-            }
+            let mapped = docs.compactMap { self.decodeEntity(doc: $0, forcedType: .human) }
+            Task { @MainActor in self.players = mapped }
         }
     }
 
-    @MainActor
-    func stopPlayersListener() {
-        playersListener?.remove()
-        playersListener = nil
+    func stopPlayersListener() { playersListener?.remove(); playersListener = nil }
+
+    func startHumansListener() {
+        guard let col = humansColRef else { return }
+        humansListener?.remove()
+
+        humansListener = col.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+            if let err = err {
+                print("Humans listener ERROR:", err.localizedDescription)
+                return
+            }
+            let docs = snap?.documents ?? []
+            let mapped = docs.compactMap { self.decodeEntity(doc: $0, forcedType: .human) }
+            Task { @MainActor in self.humans = mapped }
+        }
     }
-    
+
+    func stopHumansListener() { humansListener?.remove(); humansListener = nil }
+
+    func startZombiesListener() {
+        guard let col = zombiesColRef else { return }
+        zombiesListener?.remove()
+
+        zombiesListener = col.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+            if let err = err {
+                print("Zombies listener ERROR:", err.localizedDescription)
+                return
+            }
+            let docs = snap?.documents ?? []
+            let mapped = docs.compactMap { self.decodeEntity(doc: $0, forcedType: .zombie) }
+            Task { @MainActor in self.zombies = mapped }
+        }
+    }
+
+    func stopZombiesListener() { zombiesListener?.remove(); zombiesListener = nil }
+
+    func startItemsListener() {
+        guard let col = itemsColRef else { return }
+        itemsListener?.remove()
+
+        itemsListener = col.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+            if let err = err {
+                print("Items listener ERROR:", err.localizedDescription)
+                return
+            }
+            let docs = snap?.documents ?? []
+            let mapped = docs.compactMap { self.decodeEntity(doc: $0, forcedType: .item) }
+            Task { @MainActor in self.items = mapped }
+        }
+    }
+
+    func stopItemsListener() { itemsListener?.remove(); itemsListener = nil }
 }

@@ -61,8 +61,8 @@ extension ContentView {
 // MARK: - Header & Controls
 extension ContentView {
     fileprivate var headerSection: some View {
-        let hp = vm.myPlayer?.hp ?? 0
-        let ap = vm.myPlayer?.ap ?? 0
+        let hp = vm.myHpText
+        let ap = vm.myApText
 
         return VStack(spacing: 4) {
             Text(vm.gameName.isEmpty ? "Lockdown 2030" : vm.gameName)

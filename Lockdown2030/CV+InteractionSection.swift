@@ -8,13 +8,18 @@
 import SwiftUI
 
 extension ContentView {
+
     var interactionSection: some View {
         Group {
-            if let pos = vm.interactionPos, let kind = vm.interactionKind {
-                VStack(alignment: .leading, spacing: 4) {
-                    // Header row: title + coords + close button
+            // Show panel if we have a tapped tile OR a selected entity
+            if let pos = vm.interactionPos {
+                let selected = vm.selectedEntity // derived from selectedEntityId
+
+                VStack(alignment: .leading, spacing: 6) {
+
+                    // Header row
                     HStack(spacing: 8) {
-                        Text(interactionTitle(for: kind))
+                        Text(selected.map(entityTitle) ?? "Tile")
                             .font(.caption)
                             .fontWeight(.semibold)
 
@@ -24,63 +29,65 @@ extension ContentView {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
 
-                        Button(action: {
-                            vm.clearInteraction()
-                        }) {
+                        Button(action: { vm.clearInteraction() }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.caption)
                         }
                         .buttonStyle(.borderless)
                     }
 
-                    // Simple description placeholder for now.
-                    Text(interactionDescription(for: kind))
+                    // Description
+                    Text(selected.map(entitySubtitle) ?? "Tap an entity on this tile.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    // HP line + bar for any attackable entity (zombie / human NPC)
-                    if (kind == .zombie || kind == .human),
-                       let hp = vm.interactionZombieHp,
-                       let ratio = vm.interactionZombieHpRatio {
-                        let hpColor = vm.interactionZombieHpColor ?? .green
+                    // HP bar only if selected entity is an ACTOR (HUMAN/ZOMBIE)
+                    if let actor = selected?.actor {
+                        let hp = actor.currentHp ?? 0
+                        let maxHp = max(actor.maxHp ?? 1, 1)
+                        let ratio = Double(hp) / Double(maxHp)
 
                         VStack(spacing: 2) {
                             HStack {
                                 Text("HP")
                                     .font(.caption2)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(hpColor)
                                 Spacer()
-                                Text("\(hp)/\(vm.interactionZombieMaxHp)")
+                                Text("\(hp)/\(maxHp)")
                                     .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(hpColor)
+                                    .foregroundStyle(.secondary)
                             }
 
                             ProgressView(value: ratio)
                                 .progressViewStyle(.linear)
-                                .tint(hpColor)
                         }
                     }
 
+                    // Actions
                     HStack {
                         Spacer()
-                        Button(interactionButtonLabel(for: kind)) {
-                            switch kind {
-                            case .zombie:
-                                vm.attackSelected()
-                            case .human:
-                                // For now share same attack path as zombie.
-                                vm.attackSelected()
-                            case .tile, .item:
-                                break
+
+                        if let selected = selected {
+                            switch selected.type {
+                            case .item:
+                                Button("Equip") { }
+                                    .buttonStyle(.bordered)
+                                    .disabled(true)
+
+                            case .zombie, .human:
+                                Button("Attack") {
+                                    vm.attackSelectedEntity()
+                                }
+                                .buttonStyle(.bordered)
                             }
+                        } else {
+                            Button("OK") { }
+                                .buttonStyle(.bordered)
+                                .disabled(true)
                         }
-                        .buttonStyle(.bordered)
-                        // Enable for zombie + human (human uses same attackSelected() for now).
-                        .disabled(!(kind == .zombie || kind == .human))
                     }
                 }
-                .padding(8)
+                .padding(10)
                 .background(.thinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .padding(.top, 4)
@@ -88,34 +95,30 @@ extension ContentView {
         }
     }
 
-    func interactionTitle(for kind: GameVM.InteractionKind) -> String {
-        switch kind {
-        case .tile:   return "Tile"
-        case .zombie: return "Zombie"
-        case .human:  return "Human"
-        case .item:   return "Item"
-        }
+    // MARK: - Helpers
+
+    private func entityTitle(_ e: Entity) -> String {
+        // Prefer kind (WALKER/PLAYER/PISTOL/etc). Fall back to type.
+        let kind = e.kind.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !kind.isEmpty { return kind }
+        return e.type.rawValue
     }
 
-    func interactionDescription(for kind: GameVM.InteractionKind) -> String {
-        switch kind {
-        case .tile:
-            return "You are standing here."
-        case .zombie:
-            return "Zombie on your tile. Future: inspect and attack."
-        case .human:
-            return "Human on your tile. Future: talk / inspect."
+    private func entitySubtitle(_ e: Entity) -> String {
+        switch e.type {
+        case .zombie, .human:
+            if let a = e.actor {
+                let hp = a.currentHp ?? 0
+                let maxHp = a.maxHp ?? 0
+                let ap = a.currentAp ?? 0
+                let maxAp = a.maxAp ?? 0
+                return "HP \(hp)/\(maxHp) • AP \(ap)/\(maxAp)"
+            }
+            return e.type.rawValue
+
         case .item:
-            return "Item on your tile. Future: pick up."
-        }
-    }
-
-    func interactionButtonLabel(for kind: GameVM.InteractionKind) -> String {
-        switch kind {
-        case .tile:   return "Use tile"
-        case .zombie: return "Attack"
-        case .human:  return "Attack"
-        case .item:   return "Pick up"
+            // Don’t assume item component fields here (keep compile-safe).
+            return "ITEM"
         }
     }
 }
