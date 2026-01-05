@@ -63,7 +63,9 @@ extension GameVM {
                 guard let p = data["pos"] as? [String: Any],
                       let x = p["x"] as? Int,
                       let y = p["y"] as? Int else { return nil }
-                return Pos(x: x, y: y)
+                let z = p["z"] as? Int ?? 0
+                let layer = p["layer"] as? Int ?? 0
+                return Pos(x: x, y: y, z: z, layer: layer)
             }()
 
             let actor = ActorComponent(

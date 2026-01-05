@@ -18,13 +18,39 @@ extension GameVM {
             return
         }
 
-        let dx = pos.x - current.x
-        let dy = pos.y - current.y
+        let targetCell = renderCellAt(x: pos.x, y: pos.y)
+        let targetPos = Pos(
+            x: pos.x,
+            y: pos.y,
+            z: targetCell?.z ?? current.z,
+            layer: targetCell?.layer ?? current.layer
+        )
+        let dx = targetPos.x - current.x
+        let dy = targetPos.y - current.y
         let step = max(abs(dx), abs(dy))
-        guard step == 1 else { return }
+        guard step >= 1 else { return }
+
+        let moveDx: Int
+        let moveDy: Int
+
+        if abs(dx) == 1 && abs(dy) == 1 {
+            moveDx = dx
+            moveDy = dy
+        } else if abs(dx) > 1 || abs(dy) > 1 {
+            if abs(dx) >= abs(dy) {
+                moveDx = dx == 0 ? 0 : (dx > 0 ? 1 : -1)
+                moveDy = 0
+            } else {
+                moveDx = 0
+                moveDy = dy == 0 ? 0 : (dy > 0 ? 1 : -1)
+            }
+        } else {
+            moveDx = dx
+            moveDy = dy
+        }
 
         clearInteraction()
-        Task { await move(dx: dx, dy: dy) }
+        Task { await move(dx: moveDx, dy: moveDy) }
     }
 
     func handleEntityTap(entityId: String) {

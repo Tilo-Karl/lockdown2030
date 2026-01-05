@@ -22,6 +22,7 @@ extension GameVM {
     var humansColRef: CollectionReference?  { gameDocRef?.collection("humans") }
     var zombiesColRef: CollectionReference? { gameDocRef?.collection("zombies") }
     var itemsColRef: CollectionReference?   { gameDocRef?.collection("items") }
+    var cellsColRef: CollectionReference?   { gameDocRef?.collection("cells") }
 
     // MARK: - Game doc listener (map/meta)
 
@@ -61,51 +62,22 @@ extension GameVM {
             mapId = mid
         }
 
-        if let mapMeta = data["mapMeta"] as? [String: Any] {
-            applyMapMeta(mapMeta)
-        }
-    }
-
-    private func applyMapMeta(_ mapMeta: [String: Any]) {
-        if let terrainArr = mapMeta["terrain"] as? [String] {
-            tileRows = terrainArr
-        }
-
-        if let rawTileMeta = mapMeta["tileMeta"] as? [String: Any] {
-            var dict: [String: TileMeta] = [:]
-
-            for (code, value) in rawTileMeta {
-                guard let metaDict = value as? [String: Any],
-                      let label = metaDict["label"] as? String,
-                      let colorHex = metaDict["colorHex"] as? String
-                else { continue }
-
-                dict[code] = TileMeta(
-                    label: label,
-                    colorHex: colorHex,
-                    blocksMovement: metaDict["blocksMovement"] as? Bool ?? false,
-                    blocksVision: metaDict["blocksVision"] as? Bool ?? false,
-                    playerSpawnAllowed: metaDict["playerSpawnAllowed"] as? Bool ?? true,
-                    zombieSpawnAllowed: metaDict["zombieSpawnAllowed"] as? Bool ?? true,
-                    moveCost: metaDict["moveCost"] as? Int
-                )
+        if let rawPalette = data["cellPalette"] as? [String: Any] {
+            do {
+                let palette = try Firestore.Decoder().decode(CellPalette.self, from: rawPalette)
+                cellPalette = palette
+                let terrainKeys = palette.terrainColors.keys.sorted()
+                let buildingKeys = palette.buildingColors.keys.sorted()
+                let terrainSample = terrainKeys.prefix(10).joined(separator: ",")
+                let buildingSample = buildingKeys.prefix(10).joined(separator: ",")
+                print("cellPalette present v\(palette.version) terrainColors=\(palette.terrainColors.count) terrainKeys=[\(terrainSample)] buildingColors=\(palette.buildingColors.count) buildingKeys=[\(buildingSample)]")
+            } catch {
+                cellPalette = nil
+                print("cellPalette decode failed:", error)
             }
-
-            if !dict.isEmpty { tileMeta = dict }
-        }
-
-        if let buildingsArr = mapMeta["buildings"] as? [[String: Any]] {
-            buildings = parseBuildingsArray(buildingsArr)
-        }
-
-        if let palette = mapMeta["buildingPalette"] as? [String: String] {
-            buildingColors = palette
-        } else if let anyPalette = mapMeta["buildingPalette"] as? [String: Any] {
-            var normalized: [String: String] = [:]
-            for (k, v) in anyPalette {
-                if let s = v as? String { normalized[k] = s }
-            }
-            buildingColors = normalized
+        } else {
+            cellPalette = nil
+            print("cellPalette missing on game doc")
         }
     }
 
@@ -115,7 +87,9 @@ extension GameVM {
         guard let p = data["pos"] as? [String: Any],
               let x = p["x"] as? Int,
               let y = p["y"] as? Int else { return nil }
-        return Pos(x: x, y: y)
+        let z = p["z"] as? Int ?? 0
+        let layer = p["layer"] as? Int ?? 0
+        return Pos(x: x, y: y, z: z, layer: layer)
     }
 
     private func decodeDate(_ v: Any?) -> Date? {
@@ -318,4 +292,51 @@ extension GameVM {
     }
 
     func stopItemsListener() { itemsListener?.remove(); itemsListener = nil }
+
+    func startCellsListener() {
+        guard let col = cellsColRef else { return }
+        cellsListener?.remove()
+
+        cellsListener = col.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+            if let err = err {
+                print("Cells listener ERROR:", err.localizedDescription)
+                return
+            }
+            let docs = snap?.documents ?? []
+            var outsideMapped: [Pos: Cell] = [:]
+            var insideMapped: [String: Cell] = [:]
+            let decoder = Firestore.Decoder()
+
+            for doc in docs {
+                guard let cell = try? decoder.decode(Cell.self, from: doc.data()) else { continue }
+                if cell.layer == 0 && cell.z == 0 {
+                    outsideMapped[cell.pos2D] = cell
+                } else if cell.layer == 1 {
+                    insideMapped["\(cell.x),\(cell.y),\(cell.z)"] = cell
+                }
+            }
+
+            print("cells snapshot: outside=\(outsideMapped.count) inside=\(insideMapped.count)")
+
+            let buildingTypes = Set(outsideMapped.values.compactMap { $0.building?.type })
+            let sortedTypes = buildingTypes.sorted()
+            let sampleTypes = Array(sortedTypes.prefix(20))
+            if !sampleTypes.isEmpty {
+                let sampleList = sampleTypes.joined(separator: ",")
+                let checks = sampleTypes.map { type in
+                    let has = self.cellPalette?.buildingColors[type] != nil
+                    return "\(type)=\(has)"
+                }.joined(separator: ",")
+                print("outside buildingTypes count=\(buildingTypes.count) sample=[\(sampleList)] paletteMatch=[\(checks)]")
+            } else {
+                print("outside buildingTypes count=0")
+            }
+
+            Task { @MainActor in
+                self.cellsOutsideByPos = outsideMapped
+                self.cellsInsideByPos3D = insideMapped
+            }
+        }
+    }
 }

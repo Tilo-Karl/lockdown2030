@@ -1,0 +1,55 @@
+Repo map (depth 2–3)
+
+Lockdown2030/
+Lockdown2030App.swift
+ContentView.swift
+CV+InteractionSection.swift
+CV+EventLogSection.swift
+Lockdown2030/Grid/
+GridView.swift
+GridCellView.swift
+GridCellView+EntityTap.swift
+GridViewport.swift
+GridConfig.swift
+Lockdown2030/Game/
+GameVM.swift
+GameVM+Firestore.swift
+GameVM+Player.swift
+GameVM+Engine.swift
+GameVM+Engine+Attack.swift
+GameVM+Combat.swift
+GameVM+Tap.swift
+GameVM+Interaction.swift
+GameVM+Messages.swift
+GameVM+Buildings.swift
+GameVM+Tick.swift
+GameVM+Sign.swift
+GameVM+Admin.swift
+Lockdown2030/Models/
+Cell.swift
+CellPalette.swift
+Entity.swift
+Entity+Firestore.swift
+ActorComponent.swift
+ItemComponent.swift
+Equipment.swift
+EntityType.swift
+Pos.swift
+CloudAPI.swift
+GameStrings.swift
+Key systems summary
+
+SwiftUI only: no UIKit usage; UI entry is Lockdown2030App.swift → ContentView.swift.
+Grid/map view: GridView.swift + GridCellView.swift; rendered from GameVM.tileLabelAt/tileColorAt.
+Player position/state: GameVM in GameVM.swift (myPos, myActor, interactionPos, selectedEntityId), with Firestore updates in GameVM+Player.swift and entity listeners in GameVM+Firestore.swift.
+Backend calls: CloudAPI.postJSON in CloudAPI.swift, used by GameVM+Engine.swift (join/move), GameVM+Engine+Attack.swift (attack), GameVM+Tick.swift (tick).
+Firestore listeners: GameVM+Firestore.swift (game doc, cells, players, humans, zombies, items) and GameVM+Player.swift (my player doc). Started in GameVM+Sign.swift.
+UI actions: tile taps in GridView.swift call GameVM.handleTileTap (GameVM+Tap.swift → move), entity taps trigger selection and attack via CV+InteractionSection.swift → GameVM.attackSelectedEntity (GameVM+Combat.swift). Enter/leave building functions exist in GameVM+Buildings.swift but are not wired to UI.
+Inside/outside cells: cellsOutsideByPos and cellsInsideByPos3D in GameVM.swift; renderer uses renderCellAt based on isInsideBuilding.
+Gaps relevant to SEARCH + ITEMS + EVENTS
+
+Search: Cell.search is decoded but unused in UI/logic; no search UI or action exists.
+Items: item icons render in grid; equip action button exists but is disabled; no inventory UI beyond actor fields.
+Events: CV+EventLogSection.swift exists and uses GameVM.messageLog (GameVM+Messages.swift); no external event stream beyond Firestore/game tick messages.
+Frontend readiness for search feature
+The frontend can display per-cell data via renderCellAt and already decodes Cell.search and related fields, but there is no UI or action flow wired to trigger or present search state. To support a search feature, the UI would need a dedicated interaction path (button/menu) and a place to show remaining/search results; no such flow exists today, so it is not ready beyond data availability.

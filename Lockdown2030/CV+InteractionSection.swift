@@ -86,6 +86,63 @@ extension ContentView {
                                 .disabled(true)
                         }
                     }
+
+                    // Tile Inspector (debug)
+                    if let cell = vm.renderCellAt(x: pos.x, y: pos.y) {
+                        let terrainCode = cell.terrain ?? ""
+                        let buildingName = cell.building?.name ?? ""
+                        let buildingType = cell.building?.type ?? ""
+                        let cellType = cell.type ?? ""
+                        let labelSource: String = {
+                            if !buildingName.isEmpty { return "building.name" }
+                            if !buildingType.isEmpty { return "building.type" }
+                            if !cellType.isEmpty { return "cell.type" }
+                            return "empty"
+                        }()
+
+                        let terrainHex = vm.cellPalette?.terrainColors[terrainCode]
+                        let paletteType = !buildingType.isEmpty ? buildingType : cellType
+                        let buildingHex = paletteType.isEmpty ? nil : vm.cellPalette?.buildingColors[paletteType]
+                        let chosenHex = buildingHex ?? terrainHex
+                        let colorSource = buildingHex != nil
+                            ? "buildingColors[type]"
+                            : (terrainHex != nil ? "terrainColors[terrain]" : "fallback")
+
+                        let baseOpacity: Double = cell.blocksMove ? 0.55 : 0.25
+                        let opacityFinal = cell.ruined ? max(baseOpacity, 0.7) : baseOpacity
+                        let opacityStr = String(format: "%.2f", opacityFinal)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Tile Inspector")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+
+                            Text("raw: x=\(cell.x) y=\(cell.y) z=\(cell.z) layer=\(cell.layer)")
+                                .font(.caption2)
+                            Text("terrain=\(terrainCode) blocksMove=\(opt(cell.blocksMove)) moveCost=\(opt(cell.moveCost)) ruined=\(opt(cell.ruined)) hp=\(opt(cell.hp))")
+                                .font(.caption2)
+                            Text("type=\(opt(cell.type)) districtId=\(opt(cell.districtId))")
+                                .font(.caption2)
+                            Text("building.type=\(opt(cell.building?.type)) name=\(opt(cell.building?.name)) floors=\(opt(cell.building?.floors)) districtId=\(opt(cell.building?.districtId)) root=\(opt(cell.building?.root?.x)),\(opt(cell.building?.root?.y))")
+                                .font(.caption2)
+                            Text("fuse.hp=\(opt(cell.fuse?.hp)) water.hp=\(opt(cell.water?.hp)) generator.installed=\(opt(cell.generator?.installed)) generator.hp=\(opt(cell.generator?.hp))")
+                                .font(.caption2)
+                            Text("search.remaining=\(opt(cell.search?.remaining)) search.searchedCount=\(opt(cell.search?.searchedCount))")
+                                .font(.caption2)
+                            Text("createdAt=\(opt(cell.createdAt)) updatedAt=\(opt(cell.updatedAt))")
+                                .font(.caption2)
+
+                            Text("labelSource=\(labelSource)")
+                                .font(.caption2)
+                            Text("colorSource=\(colorSource) terrainHex=\(opt(terrainHex)) buildingHex=\(opt(buildingHex)) chosenHex=\(opt(chosenHex)) opacityFinal=\(opacityStr)")
+                                .font(.caption2)
+                        }
+                        .padding(.top, 4)
+                    } else {
+                        Text("Tile Inspector: no outside cell at this position.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(10)
                 .background(.thinMaterial)
@@ -120,5 +177,9 @@ extension ContentView {
             // Don’t assume item component fields here (keep compile-safe).
             return "ITEM"
         }
+    }
+
+    private func opt<T>(_ value: T?) -> String {
+        value.map { "\($0)" } ?? "nil"
     }
 }

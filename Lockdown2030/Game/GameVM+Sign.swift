@@ -28,6 +28,7 @@ extension GameVM {
         }
 
         startGameDocListener()
+        startCellsListener()
         startPlayersListener()
         startHumansListener()
         startZombiesListener()

@@ -1,0 +1,95 @@
+Phase 0 — Wire what already exists (NO new features)
+
+Goal: get inside buildings reliably.
+	1.	Enter building
+
+	•	File: GameVM+Buildings.swift
+	•	You already have enter/leave logic.
+	•	Expose Enter button in CV+InteractionSection.swift when:
+	•	myPos.layer == 0
+	•	inside cell exists at (x,y,0,1)
+	•	On tap → call existing enterBuilding() in VM.
+
+	2.	Inside navigation
+
+	•	Grid already supports inside via cellsInsideByPos3D.
+	•	Stairs already exist in backend.
+	•	Add Up / Down buttons in CV+InteractionSection.swift:
+	•	Call existing stairs endpoint via VM (if not already wired).
+
+👉 Stop here until inside/outside feels 100% solid.
+
+⸻
+
+Phase 1 — SEARCH (minimal, contract-faithful)
+
+Goal: make your new backend feature visible.
+	3.	Search button
+
+	•	File: CV+InteractionSection.swift
+	•	Show button only if:
+	•	myPos.layer == 1
+	•	cell.search.remaining > 0
+	•	On tap → add GameVM.search():
+	•	Call POST /search via CloudAPI.
+
+	4.	Update local state
+
+	•	Firestore listener already updates cells.
+	•	After search:
+	•	cell.search.remaining auto-updates via listener
+	•	AP auto-updates via player listener
+	•	Do NOT infer loot from response.
+
+⸻
+
+Phase 2 — Items on ground → pickup
+
+Goal: close the search → loot loop.
+	5.	Ground items
+
+	•	Already rendered (you said icons appear).
+	•	Add Pickup button in CV+InteractionSection.swift when:
+	•	selected entity is an item
+	•	item.pos == myPos
+	•	item.carriedBy == nil
+
+	6.	Pickup
+
+	•	Call existing pickup endpoint (already in backend).
+	•	Inventory updates via Firestore listener.
+
+⸻
+
+Phase 3 — Events feedback (use what exists)
+
+Goal: player understands what happened.
+	7.	Event log
+
+	•	CV+EventLogSection.swift + GameVM+Messages.swift already exist.
+	•	Wire them to new /events feed (instead of only tick/system messages).
+	•	Render:
+	•	SEARCH_SUCCESS → “Found X”
+	•	SEARCH_EMPTY → “Nothing found” (optionally show failureReason)
+
+⸻
+
+What you do NOT do yet
+	•	❌ Inventory UI redesign
+	•	❌ Finder modifier
+	•	❌ Stress/search weighting UI
+	•	❌ Noise visualization
+
+Those come after playability.
+
+⸻
+
+One-sentence status
+
+Your frontend is ready enough: grid, cells, items, VM, listeners all exist — you are only missing UI wiring, not systems.
+
+If you want next, say:
+
+“Phase 0: Enter building wiring — tell me exactly which methods to call.”
+
+And we do it file-by-file.

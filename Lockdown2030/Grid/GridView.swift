@@ -87,7 +87,13 @@ struct GridView: View {
         tileSize: CGFloat,
         centerPos: Pos?
     ) -> some View {
-        let pos = Pos(x: x, y: y)
+        let cell = vm.renderCellAt(x: x, y: y)
+        let pos = Pos(
+            x: x,
+            y: y,
+            z: cell?.z ?? vm.myPos?.z ?? 0,
+            layer: cell?.layer ?? vm.myPos?.layer ?? 0
+        )
 
         let entitiesHere = vm.allEntities.filter { $0.pos == pos }
 
@@ -105,18 +111,8 @@ struct GridView: View {
             return ip == pos
         }()
 
-        let tileLabel: String = {
-            if let b = vm.buildingAt(x: x, y: y) {
-                return b.type
-            }
-            if let code = vm.tileCodeAt(x: x, y: y),
-               let meta = vm.tileMeta[code] {
-                return meta.label.uppercased()
-            }
-            return ""
-        }()
-
-        let building = vm.buildingAt(x: x, y: y)
+        let tileLabel = vm.tileLabelAt(x: x, y: y)
+        let tileColor = vm.tileColorAt(x: x, y: y)
 
         return GridCellView(
             x: x,
@@ -125,10 +121,10 @@ struct GridView: View {
             isHighlighted: isHighlighted,
             isTargetSelectedEntity: entitiesHere.contains { $0.id == vm.selectedEntityId },
             hitTick: vm.zombieHitTick,
-            building: building,
+            building: nil,
             cellSize: tileSize,
-            buildingColor: vm.buildingColor(for: building),
-            tileColor: vm.tileColorAt(x: x, y: y),
+            buildingColor: nil,
+            tileColor: tileColor,
             tileLabel: tileLabel,
             zombieIds: zombieIds,
             humanIds: humanIds,
@@ -148,7 +144,9 @@ struct GridView: View {
     private func clamp(_ pos: Pos) -> Pos {
         Pos(
             x: min(max(pos.x, 0), vm.gridW - 1),
-            y: min(max(pos.y, 0), vm.gridH - 1)
+            y: min(max(pos.y, 0), vm.gridH - 1),
+            z: pos.z,
+            layer: pos.layer
         )
     }
 

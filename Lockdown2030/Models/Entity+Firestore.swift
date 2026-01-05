@@ -23,7 +23,9 @@ extension Entity {
         if let posDict = data["pos"] as? [String: Any],
            let x = posDict["x"] as? Int,
            let y = posDict["y"] as? Int {
-            self.pos = Pos(x: x, y: y)
+            let z = posDict["z"] as? Int ?? 0
+            let layer = posDict["layer"] as? Int ?? 0
+            self.pos = Pos(x: x, y: y, z: z, layer: layer)
         } else {
             self.pos = nil
         }
