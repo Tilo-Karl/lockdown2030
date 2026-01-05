@@ -27,30 +27,10 @@ extension GameVM {
         )
         let dx = targetPos.x - current.x
         let dy = targetPos.y - current.y
-        let step = max(abs(dx), abs(dy))
-        guard step >= 1 else { return }
-
-        let moveDx: Int
-        let moveDy: Int
-
-        if abs(dx) == 1 && abs(dy) == 1 {
-            moveDx = dx
-            moveDy = dy
-        } else if abs(dx) > 1 || abs(dy) > 1 {
-            if abs(dx) >= abs(dy) {
-                moveDx = dx == 0 ? 0 : (dx > 0 ? 1 : -1)
-                moveDy = 0
-            } else {
-                moveDx = 0
-                moveDy = dy == 0 ? 0 : (dy > 0 ? 1 : -1)
-            }
-        } else {
-            moveDx = dx
-            moveDy = dy
-        }
+        guard dx != 0 || dy != 0 else { return }
 
         clearInteraction()
-        Task { await move(dx: moveDx, dy: moveDy) }
+        Task { await move(dx: dx, dy: dy) }
     }
 
     func handleEntityTap(entityId: String) {
@@ -85,11 +65,12 @@ extension GameVM {
 
     private func distanceFromMe(to pos: Pos) -> Int? {
         guard let current = myPos else { return nil }
+        guard current.z == pos.z, current.layer == pos.layer else { return nil }
         return abs(current.x - pos.x) + abs(current.y - pos.y)
     }
 
     private func isSameTile(_ lhs: Pos?, _ rhs: Pos) -> Bool {
         guard let l = lhs else { return false }
-        return l.x == rhs.x && l.y == rhs.y
+        return l.x == rhs.x && l.y == rhs.y && l.z == rhs.z && l.layer == rhs.layer
     }
 }
