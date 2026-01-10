@@ -1,5 +1,440 @@
-{\rtf1\ansi\ansicpg1252\cocoartf949
-{\fonttbl}
-{\colortbl;\red255\green255\blue255;}
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 HelveticaNeue-Bold;\f1\fnil\fcharset0 .SFNS-Regular;\f2\fswiss\fcharset0 Helvetica;
+\f3\fnil\fcharset0 .SFNS-Semibold;\f4\froman\fcharset0 TimesNewRomanPSMT;}
+{\colortbl;\red255\green255\blue255;\red14\green14\blue14;}
+{\*\expandedcolortbl;;\cssrgb\c6700\c6700\c6700;}
 \margl1440\margr1440\vieww9000\viewh8400\viewkind0
-}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf2 Lockdown2030 \'97 masterPlan_mk2.rtf
+\f1\b0 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f2\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Purpose
+\f1\b0\fs28 \cf2 \
+\
+This document defines the final runtime architecture and frontend contract for Lockdown2030.\
+\
+It does not redesign gameplay mechanics.\
+All existing mechanics (movement legality, combat, barricades, search, repair, damage, AP, ticks, AI behavior) are assumed correct and must be preserved.\
+\
+The goal is to re-architect execution flow, not mechanics.\
+\
+The only gameplay-level change allowed here is the promotion of movement from implicit 2D deltas to explicit 4D coordinates.\
+\
+\uc0\u11835 \
+\
+
+\f3\b\fs30 \cf2 Core Principles (Locked)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f4 \cf2 	1.	
+\f0\b Single Runtime Truth
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Cells and edges already contain the full world truth.\
+	\'95	No system may infer gameplay rules from frontend state.\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f4 \cf2 	2.	
+\f0\b Entity-Generic Actions
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Players, zombies, humans, AI, and tick logic all use the same action pipeline.\
+	\'95	No direct Firestore writes from gameplay code.\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f4 \cf2 	3.	
+\f0\b Action-Driven World
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Every state mutation happens via resolved actions.\
+	\'95	Writers are implementation details, never called directly by gameplay logic.\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f4 \cf2 	4.	
+\f0\b Concept Preservation
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Existing mechanics (search, barricades, repair, combat, damage, AP, diagonal movement) are reused as-is.\
+	\'95	Codex must not redesign, simplify, or restate them.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Movement (Mk2 \'97 REPLACEMENT)
+\f1\b0\fs28 \cf2 \
+\
+Movement is the only mechanic whose interface is changed.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 What changes
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Movement is expressed as explicit target coordinates instead of deltas.\
+	\'95	The backend becomes fully authoritative over movement resolution.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 New MOVE Action (Locked)
+\f1\b0\fs28 \cf2 \
+\
+MOVE represents any positional change in the world:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Horizontal movement\
+	\'95	Entering buildings\
+	\'95	Exiting buildings\
+	\'95	Stairs up / down\
+	\'95	Any future vertical or tower-like transitions\
+\
+There are no separate ENTER / EXIT / STAIRS actions anymore.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 MOVE Input Contract
+\f1\b0\fs28 \cf2 \
+\
+MOVE always receives:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	entityId\
+	\'95	to: \{ x, y, z, layer \}\
+\
+There is no dx/dy anywhere in the system.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 What MOVE Does Not Redefine
+\f1\b0\fs28 \cf2 \
+\
+MOVE must reuse:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Existing adjacency / diagonal movement logic\
+	\'95	Existing AP, blocking, damage, cading, search, repair logic\
+	\'95	Existing edge semantics (doors, stairs, barricades)\
+\
+Codex must lift existing logic into the MOVE resolver, not rewrite it.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Edge Resolution
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	All transitions between cells are resolved through edges.\
+	\'95	Doors, stairs, barricades already model transitions and constraints.\
+	\'95	MOVE queries edges between current cell and target cell.\
+	\'95	There are no implicit semantics based on z or layer.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Action Resolution Architecture
+\f1\b0\fs28 \cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Unified Action Resolver
+\f1\b0 \cf2 \
+\
+All actions flow through:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	A single action router\
+	\'95	A single resolver per action type\
+	\'95	A shared validation + resolution pipeline\
+\
+There is no player-only logic.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Applies to
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Player input\
+	\'95	Zombie AI\
+	\'95	Human AI\
+	\'95	Tick engine updates\
+	\'95	Scripted events\
+\
+If something moves, searches, attacks, barricades, or repairs \'97 it emits an action.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Tick Engine Refactor
+\f1\b0\fs28 \cf2 \
+\
+Tick code must:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Stop mutating Firestore directly\
+	\'95	Stop calling writers directly\
+	\'95	Emit actions instead (MOVE, ATTACK, SEARCH, etc.)\
+\
+Tick logic decides intent, not execution.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Writers (Internal Only)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Writers remain responsible for persistence\
+	\'95	Writers are only called by action resolvers\
+	\'95	No gameplay code may call writers directly\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs34 \cf2 Frontend Contract (FINAL, CLOSED SCOPE)
+\f1\b0\fs28 \cf2 \
+\
+The frontend is 
+\f0\b \cf2 not a gameplay system
+\f1\b0 \cf2 .\
+\
+
+\f3\b\fs30 \cf2 Frontend Responsibilities (Locked)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Emit intents (actions)\
+	\'95	Render authoritative state\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Frontend Must NOT
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Check legality\
+	\'95	Infer transitions\
+	\'95	Assume semantics\
+	\'95	Perform gameplay math\
+	\'95	Mutate world state\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Frontend Actions (Required Surface)
+\f1\b0\fs28 \cf2 \
+\
+The frontend must be able to emit 
+\f0\b \cf2 only
+\f1\b0 \cf2  these intents:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	MOVE\
+	\'95	ATTACK\
+	\'95	SEARCH\
+	\'95	BARRICADE\
+	\'95	REPAIR\
+	\'95	EQUIP / UNEQUIP\
+\
+If a gameplay mechanic exists but cannot be emitted from UI, the frontend is incomplete.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Frontend MOVE Rules
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	UI interactions resolve 
+\f0\b target coordinates only
+\f1\b0 \
+	\'95	MOVE is emitted as \{ entityId, to:\{x,y,z,layer\} \}\
+	\'95	No dx/dy\
+	\'95	No adjacency logic\
+	\'95	No semantic branching (inside/outside, stairs, doors)\
+\
+The backend resolves everything.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Frontend UI \uc0\u8594  Intent Mapping
+\f1\b0\fs28 \cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Movement
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Tile tap \uc0\u8594  compute target Pos \u8594  emit MOVE\
+	\'95	Enter / Exit / Stairs UI \uc0\u8594  compute target Pos \u8594  emit MOVE\
+	\'95	No local state toggles\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Search
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Button visible based on snapshot state\
+	\'95	Emit SEARCH\
+	\'95	No counters updated locally\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Barricade
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Button visible if edge exists\
+	\'95	Emit BARRICADE\
+	\'95	No HP logic client-side\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Repair
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Button visible if snapshot HP < max\
+	\'95	Emit REPAIR\
+	\'95	No local healing logic\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b \cf2 Attack
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Button visible if entity present\
+	\'95	Emit ATTACK\
+	\'95	No hit / damage math client-side\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs34 \cf2 Frontend Audit & Compliance (NEW \'97 REQUIRED)
+\f1\b0\fs28 \cf2 \
+\
+
+\f3\b\fs30 \cf2 Frontend Audit Requirement
+\f1\b0\fs28 \cf2 \
+\
+Every Swift file participating in gameplay UI or networking 
+\f0\b \cf2 must be auditable
+\f1\b0 \cf2  against this document.\
+\
+For each file, it must be possible to answer:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	What intents does this file emit?\
+	\'95	What state does this file render?\
+	\'95	Does this file contain forbidden logic?\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Forbidden Frontend Logic (Audit Checklist)
+\f1\b0\fs28 \cf2 \
+\
+The frontend must not contain:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	dx/dy movement\
+	\'95	adjacency or diagonal checks\
+	\'95	AP or HP math\
+	\'95	door / stair / barricade logic\
+	\'95	z == 0 or layer semantics\
+	\'95	isInsideBuilding as gameplay logic\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li260\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 (render-only allowed)\
+\
+Frontend code performs 
+\f0\b coordinate selection only
+\f1\b0 .\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Definition of \'93Frontend DONE\'94
+\f1\b0\fs28 \cf2 \
+\
+Frontend is complete when:\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f4 \cf2 	1.	Every gameplay mechanic has a UI affordance\
+	2.	Every affordance emits exactly one intent\
+	3.	All legality and semantics live in backend\
+	4.	Removing backend breaks everything\
+	5.	Frontend never \'93decides\'94 outcomes\
+\
+
+\f1 \uc0\u11835 
+\f4 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 What Is Explicitly Out of Scope
+\f1\b0\fs28 \cf2 \
+\
+This document does not redefine:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Diagonal movement math\
+	\'95	AP costs\
+	\'95	Damage formulas\
+	\'95	Search limits\
+	\'95	Barricade mechanics\
+	\'95	Repair rules\
+	\'95	Combat resolution\
+\
+Those already exist and are correct.\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Deletions (Intentional)
+\f1\b0\fs28 \cf2 \
+\
+Removed by replacement, not omission:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	dx/dy movement\
+	\'95	Player-only move endpoints\
+	\'95	ENTER / EXIT / STAIRS as separate actions\
+	\'95	Direct Firestore mutation from ticks or AI\
+\
+\uc0\u11835 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f3\b\fs30 \cf2 Final Note (Non-Negotiable)
+\f1\b0\fs28 \cf2 \
+\
+Codex must treat existing mechanics as 
+\f0\b \cf2 locked primitives
+\f1\b0 \cf2 .\
+\
+This plan is about architectural unification, not gameplay invention.\
+\
+The only new semantic surface area is:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	MOVE as explicit 4D target resolution\
+\
+Everything else is refactoring, not redesign.}

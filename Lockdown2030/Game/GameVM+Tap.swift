@@ -18,19 +18,11 @@ extension GameVM {
             return
         }
 
-        let targetCell = renderCellAt(x: pos.x, y: pos.y)
-        let targetPos = Pos(
-            x: pos.x,
-            y: pos.y,
-            z: targetCell?.z ?? current.z,
-            layer: targetCell?.layer ?? current.layer
-        )
-        let dx = targetPos.x - current.x
-        let dy = targetPos.y - current.y
-        guard dx != 0 || dy != 0 else { return }
+        let targetPos = pos
+        guard targetPos != current else { return }
 
         clearInteraction()
-        Task { await move(dx: dx, dy: dy) }
+        Task { await move(to: targetPos) }
     }
 
     func handleEntityTap(entityId: String) {

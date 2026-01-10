@@ -11,7 +11,7 @@ enum CloudAPI {
     private static let baseEngine = "https://ld2030-52812703983.europe-west4.run.app/api/ld2030/v1"
 
     static let join         = "\(baseEngine)/join-game"
-    static let move         = "\(baseEngine)/move-player"
+    static let move         = "\(baseEngine)/move"
     static let attackEntity = "\(baseEngine)/attack-entity"
     static let tickGame     = "\(baseEngine)/tick-game"
     static let equipItem    = "\(baseEngine)/equip-item"
@@ -59,16 +59,20 @@ struct EngineJoinRes: Codable {
 }
 
 struct EngineMoveReq: Codable {
+    struct MoveTarget: Codable {
+        let x: Int
+        let y: Int
+        let z: Int
+        let layer: Int
+    }
+
+    let entityId: String
     let gameId: String
-    let uid: String
-    let dx: Int
-    let dy: Int
+    let to: MoveTarget
 }
 
 struct EngineMoveRes: Codable {
     let ok: Bool
-    let x: Int?
-    let y: Int?
     let reason: String?
 }
 

@@ -26,12 +26,15 @@ extension GameVM {
 
     /// Enter the building on the player’s current tile, if there is one.
     func enterBuildingHere() {
-        guard buildingHere != nil else { return }
-        isInsideBuilding = true
+        guard let pos = myPos else { return }
+        let target = Pos(x: pos.x, y: pos.y, z: 0, layer: 1)
+        Task { await move(to: target) }
     }
 
     /// Leave whatever building the player is currently inside, if any.
     func leaveBuilding() {
-        isInsideBuilding = false
+        guard let pos = myPos else { return }
+        let target = Pos(x: pos.x, y: pos.y, z: 0, layer: 0)
+        Task { await move(to: target) }
     }
 }

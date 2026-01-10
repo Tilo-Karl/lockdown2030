@@ -87,9 +87,51 @@ extension ContentView {
                         }
                     }
 
+                    if let current = vm.myPos {
+                        let insideHere = vm.cellsInsideByPos3D[Pos(x: current.x, y: current.y, z: 0, layer: 1)] != nil
+                        let canEnter = current.layer == 0 && insideHere
+                        let canExit = current.layer == 1
+                        let upExists = vm.cellsInsideByPos3D[Pos(x: current.x, y: current.y, z: current.z + 1, layer: 1)] != nil
+                        let downExists = vm.cellsInsideByPos3D[Pos(x: current.x, y: current.y, z: current.z - 1, layer: 1)] != nil
+
+                        HStack {
+                            if canEnter {
+                                Button("Enter") {
+                                    let target = Pos(x: current.x, y: current.y, z: 0, layer: 1)
+                                    Task { await vm.move(to: target) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            if canExit {
+                                Button("Exit") {
+                                    let target = Pos(x: current.x, y: current.y, z: 0, layer: 0)
+                                    Task { await vm.move(to: target) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            if current.layer == 1 && upExists {
+                                Button("Up") {
+                                    let target = Pos(x: current.x, y: current.y, z: current.z + 1, layer: 1)
+                                    Task { await vm.move(to: target) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            if current.layer == 1 && downExists {
+                                Button("Down") {
+                                    let target = Pos(x: current.x, y: current.y, z: current.z - 1, layer: 1)
+                                    Task { await vm.move(to: target) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+
                     // Tile Inspector (debug)
                     if let cell = vm.renderCellAt(x: pos.x, y: pos.y) {
-                        let terrainCode = cell.terrain ?? ""
+                        let terrainCode = cell.terrain
                         let buildingName = cell.building?.name ?? ""
                         let buildingType = cell.building?.type ?? ""
                         let cellType = cell.type ?? ""
@@ -119,7 +161,7 @@ extension ContentView {
 
                             Text("raw: x=\(cell.x) y=\(cell.y) z=\(cell.z) layer=\(cell.layer)")
                                 .font(.caption2)
-                            Text("terrain=\(terrainCode) blocksMove=\(opt(cell.blocksMove)) moveCost=\(opt(cell.moveCost)) ruined=\(opt(cell.ruined)) hp=\(opt(cell.hp))")
+                            Text("terrain=\(terrainCode) blocksMove=\(cell.blocksMove) moveCost=\(cell.moveCost) ruined=\(cell.ruined) hp=\(cell.hp)")
                                 .font(.caption2)
                             Text("type=\(opt(cell.type)) districtId=\(opt(cell.districtId))")
                                 .font(.caption2)

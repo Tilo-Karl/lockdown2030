@@ -5,6 +5,7 @@ DerivedData/
 *.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 *.xcuserstate
 *.xcscmblueprint
+*.xcuserdatad/
 
 # Swift PM
 .swiftpm/

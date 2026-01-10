@@ -5,10 +5,10 @@ import FirebaseFirestore
 Cell Field Usage Map (frontend, as of current code)
 
 Top-level fields:
-- x,y: read via Cell.pos2D in `Lockdown2030/Models/Cell.swift` and used as keys in `cellsOutsideByPos` and `cellsInsideByPos3D` plus Grid rendering coordinates in `Lockdown2030/Game/GameVM+Firestore.swift` (startCellsListener) and `Lockdown2030/Grid/GridView.swift` (cellView).
+- x,y: read in `Lockdown2030/Game/GameVM+Firestore.swift` (startCellsListener) and used as keys in `cellsOutsideByPos` and `cellsInsideByPos3D` (both keyed by Pos) plus Grid rendering coordinates in `Lockdown2030/Grid/GridView.swift` (cellView).
 - z: read in `Lockdown2030/Game/GameVM+Firestore.swift` (startCellsListener) to split outside (z == 0) vs inside (all z) cells; used in inside map key.
 - layer: read in `Lockdown2030/Game/GameVM+Firestore.swift` (startCellsListener) to split outside (layer == 0) vs inside (layer == 1); also used in `Lockdown2030/Models/Cell.swift` (isInside).
-- terrain: read in `Lockdown2030/Game/GameVM.swift` (tileColorAt) for palette lookup; shown in the Tile Inspector (CV+InteractionSection).
+- terrain: read in `Lockdown2030/Game/GameVM.swift` (tileLabelAt, tileColorAt) for label and palette lookup; shown in the Tile Inspector (CV+InteractionSection).
 - blocksMove: read in `Lockdown2030/Game/GameVM.swift` (tileColorAt) to set final opacity; shown in the Tile Inspector.
 - moveCost: UNUSED in code logic; shown in the Tile Inspector.
 - ruined: read in `Lockdown2030/Game/GameVM.swift` (tileColorAt) to raise opacity; shown in the Tile Inspector.
@@ -39,7 +39,7 @@ struct Cell: Codable, Hashable, Identifiable {
     let z: Int
     let layer: Int
 
-    let terrain: String?
+    let terrain: String
     let blocksMove: Bool
     let moveCost: Int
     let ruined: Bool
@@ -76,6 +76,5 @@ struct Cell: Codable, Hashable, Identifiable {
 }
 
 extension Cell {
-    var pos2D: Pos { Pos(x: x, y: y, z: 0, layer: 0) }
     var isInside: Bool { layer == 1 }
 }

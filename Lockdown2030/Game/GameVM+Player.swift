@@ -129,7 +129,7 @@ extension GameVM {
         ref.setData([
             "userId": uid,
             "displayName": "Tester",
-            "pos": ["x": 0, "y": 0],
+            "pos": ["x": 0, "y": 0, "z": 0, "layer": 0],
 
             "type": "HUMAN",
             "kind": "PLAYER",

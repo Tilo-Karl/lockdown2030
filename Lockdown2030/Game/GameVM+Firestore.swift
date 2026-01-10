@@ -66,11 +66,7 @@ extension GameVM {
             do {
                 let palette = try Firestore.Decoder().decode(CellPalette.self, from: rawPalette)
                 cellPalette = palette
-                let terrainKeys = palette.terrainColors.keys.sorted()
-                let buildingKeys = palette.buildingColors.keys.sorted()
-                let terrainSample = terrainKeys.prefix(10).joined(separator: ",")
-                let buildingSample = buildingKeys.prefix(10).joined(separator: ",")
-                print("cellPalette present v\(palette.version) terrainColors=\(palette.terrainColors.count) terrainKeys=[\(terrainSample)] buildingColors=\(palette.buildingColors.count) buildingKeys=[\(buildingSample)]")
+                // (intentionally no palette debug logging)
             } catch {
                 cellPalette = nil
                 print("cellPalette decode failed:", error)
@@ -305,34 +301,30 @@ extension GameVM {
             }
             let docs = snap?.documents ?? []
             var outsideMapped: [Pos: Cell] = [:]
-            var insideMapped: [String: Cell] = [:]
+            var insideMapped: [Pos: Cell] = [:]
             let decoder = Firestore.Decoder()
 
             for doc in docs {
                 guard let cell = try? decoder.decode(Cell.self, from: doc.data()) else { continue }
                 if cell.layer == 0 && cell.z == 0 {
-                    outsideMapped[cell.pos2D] = cell
+                    outsideMapped[Pos(x: cell.x, y: cell.y, z: cell.z, layer: cell.layer)] = cell
                 } else if cell.layer == 1 {
-                    insideMapped["\(cell.x),\(cell.y),\(cell.z)"] = cell
+                    insideMapped[Pos(x: cell.x, y: cell.y, z: cell.z, layer: cell.layer)] = cell
                 }
             }
-
-            print("cells snapshot: outside=\(outsideMapped.count) inside=\(insideMapped.count)")
-
-            let buildingTypes = Set(outsideMapped.values.compactMap { $0.building?.type })
-            let sortedTypes = buildingTypes.sorted()
-            let sampleTypes = Array(sortedTypes.prefix(20))
-            if !sampleTypes.isEmpty {
-                let sampleList = sampleTypes.joined(separator: ",")
-                let checks = sampleTypes.map { type in
-                    let has = self.cellPalette?.buildingColors[type] != nil
-                    return "\(type)=\(has)"
-                }.joined(separator: ",")
-                print("outside buildingTypes count=\(buildingTypes.count) sample=[\(sampleList)] paletteMatch=[\(checks)]")
-            } else {
-                print("outside buildingTypes count=0")
+/*
+            #if DEBUG
+            var insideByZ: [Int: Int] = [:]
+            for cell in insideMapped.values {
+                insideByZ[cell.z, default: 0] += 1
             }
-
+            let insideByZParts = insideByZ.keys.sorted().map { key in
+                "\(key):\(insideByZ[key] ?? 0)"
+            }
+            let insideByZString = insideByZParts.joined(separator: ",")
+            print("cells snapshot: outside=\(outsideMapped.count) inside=\(insideMapped.count) insideByZ={\(insideByZString)}")
+            #endif
+*/
             Task { @MainActor in
                 self.cellsOutsideByPos = outsideMapped
                 self.cellsInsideByPos3D = insideMapped

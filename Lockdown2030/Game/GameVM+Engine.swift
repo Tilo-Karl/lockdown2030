@@ -23,7 +23,12 @@ extension GameVM {
         do {
             let res: EngineJoinRes = try await CloudAPI.postJSON(to: CloudAPI.join, body: req)
             if res.ok {
-                let pos = Pos(x: res.x, y: res.y)
+                let pos = Pos(
+                    x: res.x,
+                    y: res.y,
+                    z: myPos?.z ?? 0,
+                    layer: myPos?.layer ?? 0
+                )
                 myPos = pos
                 focusPos = pos
                 startMyPlayerListener()
@@ -37,21 +42,21 @@ extension GameVM {
     }
 
     @MainActor
-    func move(dx: Int, dy: Int) async {
+    func move(to target: Pos) async {
         guard !uid.isEmpty else { return }
+        guard let entityId = myActor?.id else { return }
 
-        let req = EngineMoveReq(gameId: gameId, uid: uid, dx: dx, dy: dy)
+        let req = EngineMoveReq(
+            entityId: entityId,
+            gameId: gameId,
+            to: .init(x: target.x, y: target.y, z: target.z, layer: target.layer)
+        )
 
         do {
             let res: EngineMoveRes = try await CloudAPI.postJSON(to: CloudAPI.move, body: req)
 
             if res.ok {
-                // Move succeeded. Some backends return no coordinates; Firestore listeners will update myPos.
-                if let x = res.x, let y = res.y {
-                    let pos = Pos(x: x, y: y)
-                    myPos = pos
-                    focusPos = pos
-                }
+                // Move succeeded. Firestore listeners will update authoritative state.
                 return
             }
 

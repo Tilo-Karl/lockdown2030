@@ -33,7 +33,7 @@ final class GameVM: ObservableObject {
     @Published var isInsideBuilding: Bool = false
     @Published var cellPalette: CellPalette? = nil
     @Published var cellsOutsideByPos: [Pos: Cell] = [:]
-    @Published var cellsInsideByPos3D: [String: Cell] = [:]
+    @Published var cellsInsideByPos3D: [Pos: Cell] = [:]
 
     // MARK: - World entities (canonical)
 
@@ -118,15 +118,12 @@ final class GameVM: ObservableObject {
     }
 
     private func insideCellAt(x: Int, y: Int, z: Int) -> Cell? {
-        cellsInsideByPos3D["\(x),\(y),\(z)"]
+        cellsInsideByPos3D[Pos(x: x, y: y, z: z, layer: 1)]
     }
 
     func renderCellAt(x: Int, y: Int) -> Cell? {
         if let pos = myPos, pos.layer == 1 {
             return insideCellAt(x: x, y: y, z: pos.z)
-        }
-        if isInsideBuilding {
-            return insideCellAt(x: x, y: y, z: 0)
         }
         return outsideCellAt(x: x, y: y)
     }
@@ -135,7 +132,7 @@ final class GameVM: ObservableObject {
         guard let cell = renderCellAt(x: x, y: y) else { return "" }
         if let name = cell.building?.name, !name.isEmpty { return name }
         if let type = cell.building?.type, !type.isEmpty { return type }
-        if let terrain = cell.terrain, !terrain.isEmpty { return terrain }
+        if !cell.terrain.isEmpty { return cell.terrain }
         return ""
     }
 
@@ -144,7 +141,7 @@ final class GameVM: ObservableObject {
             return Color.gray.opacity(0.2)
         }
 
-        let terrainCode = cell.terrain ?? ""
+        let terrainCode = cell.terrain
         var baseColor: Color = {
             if let hex = cellPalette?.terrainColors[terrainCode] {
                 return CellPalette.colorFromHex(hex)
